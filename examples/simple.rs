@@ -38,9 +38,9 @@ async fn main_loop(mut terminal: DefaultTerminal, framerate: f64) -> Result<(), 
 
     loop {
         // Update FPS tracking
-        fps = fps.min(1e4) * FPS_SMOOTHING
-            + (1.0 - FPS_SMOOTHING) / last_tick.elapsed().as_secs_f64();
+        let elapsed = last_tick.elapsed();
         last_tick = time::Instant::now();
+        fps = fps.min(1e4) * FPS_SMOOTHING + (1.0 - FPS_SMOOTHING) / elapsed.as_secs_f64();
 
         // Render
         terminal.draw(|frame| render(frame, start_time.elapsed(), fps, show_fps))?;
