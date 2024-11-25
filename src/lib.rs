@@ -135,6 +135,10 @@ impl Rain {
 impl Widget for Rain {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let mut rng = self.build_rng();
+        let num_drops = self.rain_density.num_drops(area);
+        let drop_track_lens: Vec<usize> = (0..num_drops)
+            .map(|_| (area.height as u64 + rng.next_u64() % (area.height as u64 * 2)) as usize)
+            .collect();
         format!(
             "stable rand: {} after {}s",
             rng.next_u64(),

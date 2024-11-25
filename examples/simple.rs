@@ -37,17 +37,18 @@ async fn main_loop(mut terminal: DefaultTerminal, framerate: f64) -> Result<(), 
     let mut fps: f64 = framerate;
 
     loop {
-        // Update FPS tracking
-        let elapsed = last_tick.elapsed();
-        last_tick = time::Instant::now();
-        fps = fps.min(1e4) * FPS_SMOOTHING + (1.0 - FPS_SMOOTHING) / elapsed.as_secs_f64();
-
-        // Render
-        terminal.draw(|frame| render(frame, start_time.elapsed(), fps, show_fps))?;
-
         // Wait for next tick or term signal
         tokio::select! {
-            _ = tick_interval.tick() => {},
+            _ = tick_interval.tick() => {
+                // Update FPS tracking
+                let elapsed = last_tick.elapsed();
+                last_tick = time::Instant::now();
+                fps = fps.min(1e4) * FPS_SMOOTHING + (1.0 - FPS_SMOOTHING) / elapsed.as_secs_f64();
+
+                // Render
+                terminal.draw(|frame| render(frame, start_time.elapsed(), fps, show_fps))?;
+            },
+
             event = reader.next().fuse() => match event {
                 Some(Ok(Event::Key(key_event))) if key_event.code == KeyCode::Char('q') => {
                     return Ok(())
