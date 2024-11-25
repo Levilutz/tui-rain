@@ -32,7 +32,7 @@ pub enum RainDensity {
 }
 
 impl RainDensity {
-    /// Get the absolute number of drops given a density.
+    /// Get the absolute number of drops given an area.
     fn num_drops(&self, area: Rect) -> usize {
         match self {
             RainDensity::Absolute { num_drops } => *num_drops,
@@ -74,6 +74,55 @@ impl RainSpeed {
     }
 }
 
+/// A character set for the rain.
+pub enum CharacterSet {
+    /// An explicit enumeration of character options. This is the least performant.
+    Explicit { options: Vec<char> },
+
+    /// A range of unicode values.
+    UnicodeRange { start: u32, len: u32 },
+
+    /// Half-width Japanese Kana characters. This is the closest to the original.
+    ///
+    /// Equivalent to `CharacterSet::UnicodeRange { start: 0xFF66, len: 56 }`.
+    HalfKana,
+
+    /// The lowercase English alphabet.
+    ///
+    /// Equivalent to `CharacterSet::UnicodeRange { start: 0x61, len: 26 }`.
+    Lowercase,
+}
+
+impl CharacterSet {
+    fn get(&self, seed: u32) -> char {
+        match self {
+            CharacterSet::Explicit { options } => options[seed as usize % options.len()],
+            CharacterSet::UnicodeRange { start, len } => {
+                char::from_u32((seed % len) + start).unwrap()
+            }
+            CharacterSet::HalfKana => CharacterSet::UnicodeRange {
+                start: 0xFF66,
+                len: 56,
+            }
+            .get(seed),
+            CharacterSet::Lowercase => CharacterSet::UnicodeRange {
+                start: 0x61,
+                len: 26,
+            }
+            .get(seed),
+        }
+    }
+
+    fn size(&self) -> usize {
+        match self {
+            CharacterSet::Explicit { options } => options.len(),
+            CharacterSet::UnicodeRange { start: _, len } => *len as usize,
+            CharacterSet::HalfKana => 56,
+            CharacterSet::Lowercase => 26,
+        }
+    }
+}
+
 pub struct Rain {
     elapsed: Duration,
     seed: u64,
@@ -82,6 +131,7 @@ pub struct Rain {
     tail_lifespan: Duration,
     color: Color,
     noise_rate: f64,
+    character_set: CharacterSet,
 }
 
 impl Rain {
@@ -95,6 +145,7 @@ impl Rain {
             tail_lifespan: Duration::from_secs(1),
             color: Color::Green,
             noise_rate: 20.0,
+            character_set: CharacterSet::HalfKana,
         }
     }
 
@@ -134,6 +185,12 @@ impl Rain {
         self
     }
 
+    /// Set the character set for the drops.
+    pub fn with_character_set(mut self, character_set: CharacterSet) -> Rain {
+        self.character_set = character_set;
+        self
+    }
+
     /// Build the rng. Uses a fast but portable and reproducible rng.
     fn build_rng(&self) -> impl RngCore {
         Pcg64Mcg::seed_from_u64(self.seed)
@@ -151,17 +208,19 @@ impl Widget for Rain {
         let track_pixel_seed: Vec<u64> = (0..area.height).map(|_| rng.next_u64()).collect();
 
         for y in 0..area.height {
-            let time_offset = uniform(track_pixel_seed[y as usize], 0.0, self.noise_rate * 56.0);
+            let time_offset = uniform(
+                track_pixel_seed[y as usize],
+                0.0,
+                self.noise_rate * self.character_set.size() as f64,
+            );
             buf[(5, y)].set_symbol(
-                &random_half_kana(((time_offset + elapsed) / self.noise_rate) as u64).to_string(),
+                &self
+                    .character_set
+                    .get(((time_offset + elapsed) / self.noise_rate) as u32)
+                    .to_string(),
             );
         }
     }
-}
-
-/// Pick a random half width kana. Seed is modulo'd to the correct range.
-fn random_half_kana(seed: u64) -> char {
-    char::from_u32((seed % 56) as u32 + 65382).unwrap()
 }
 
 /// Map a uniform random u64 to a random f64 in the range [lower, upper).
