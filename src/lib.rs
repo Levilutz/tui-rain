@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{time::Duration, u64};
 
 use rand::{RngCore, SeedableRng};
 use rand_pcg::Pcg64Mcg;
@@ -81,6 +81,7 @@ pub struct Rain {
     rain_speed: RainSpeed,
     tail_lifespan: Duration,
     color: Color,
+    noise_rate: f64,
 }
 
 impl Rain {
@@ -93,6 +94,7 @@ impl Rain {
             rain_speed: RainSpeed::Pouring,
             tail_lifespan: Duration::from_secs(1),
             color: Color::Green,
+            noise_rate: 20.0,
         }
     }
 
@@ -126,6 +128,12 @@ impl Rain {
         self
     }
 
+    /// Set the number of seconds between random character changes. Lower is more frequent.
+    pub fn with_noise_rate(mut self, noise_rate: f64) -> Rain {
+        self.noise_rate = noise_rate;
+        self
+    }
+
     /// Build the rng. Uses a fast but portable and reproducible rng.
     fn build_rng(&self) -> impl RngCore {
         Pcg64Mcg::seed_from_u64(self.seed)
@@ -134,17 +142,29 @@ impl Rain {
 
 impl Widget for Rain {
     fn render(self, area: Rect, buf: &mut Buffer) {
+        let elapsed = self.elapsed.as_secs_f64();
         let mut rng = self.build_rng();
-        let num_drops = self.rain_density.num_drops(area);
-        let drop_track_lens: Vec<usize> = (0..num_drops)
-            .map(|_| (area.height as u64 + rng.next_u64() % (area.height as u64 * 2)) as usize)
-            .collect();
-        format!(
-            "stable rand: {} after {}s",
-            rng.next_u64(),
-            self.elapsed.as_secs()
-        )
-        .light_green()
-        .render(area, buf);
+        // let num_drops = self.rain_density.num_drops(area);
+        // let drop_track_lens: Vec<usize> = (0..num_drops)
+        //     .map(|_| (area.height as u64 + rng.next_u64() % (area.height as u64 * 2)) as usize)
+        //     .collect();
+        let track_pixel_seed: Vec<u64> = (0..area.height).map(|_| rng.next_u64()).collect();
+
+        for y in 0..area.height {
+            let time_offset = uniform(track_pixel_seed[y as usize], 0.0, self.noise_rate * 56.0);
+            buf[(5, y)].set_symbol(
+                &random_half_kana(((time_offset + elapsed) / self.noise_rate) as u64).to_string(),
+            );
+        }
     }
+}
+
+/// Pick a random half width kana. Seed is modulo'd to the correct range.
+fn random_half_kana(seed: u64) -> char {
+    char::from_u32((seed % 56) as u32 + 65382).unwrap()
+}
+
+/// Map a uniform random u64 to a random f64 in the range [lower, upper).
+fn uniform(seed: u64, lower: f64, upper: f64) -> f64 {
+    (seed as f64 / u64::MAX as f64) * (upper - lower) + lower
 }
