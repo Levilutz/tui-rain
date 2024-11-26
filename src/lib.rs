@@ -1,13 +1,8 @@
-use std::{time::Duration, u64};
+use std::{cmp::Ordering, time::Duration, u64};
 
 use rand::{RngCore, SeedableRng};
 use rand_pcg::Pcg64Mcg;
-use ratatui::{
-    buffer::Buffer,
-    layout::Rect,
-    style::{Color, Stylize},
-    widgets::Widget,
-};
+use ratatui::{buffer::Buffer, layout::Rect, style::Color, widgets::Widget};
 
 /// The density of the rain.
 pub enum RainDensity {
@@ -201,29 +196,106 @@ impl Widget for Rain {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let elapsed = self.elapsed.as_secs_f64();
         let mut rng = self.build_rng();
-        // let num_drops = self.rain_density.num_drops(area);
-        // let drop_track_lens: Vec<usize> = (0..num_drops)
-        //     .map(|_| (area.height as u64 + rng.next_u64() % (area.height as u64 * 2)) as usize)
-        //     .collect();
-        let track_pixel_seed: Vec<u64> = (0..area.height).map(|_| rng.next_u64()).collect();
+        // We don't actually have n drops with tracks equal to the screen height.
+        // We actually have 2n drops with tracks ranging from 1.5 to 2.5 the screen height.
+        // This introduces more randomness to the apparent n and reduces cyclic appearance.
+        let num_drops = self.rain_density.num_drops(area) * 2;
+        let drop_track_lens: Vec<usize> = (0..num_drops)
+            .map(|_| (area.height as u64 * 3 / 2 + rng.next_u64() % area.height as u64) as usize)
+            .collect();
+        let entropy: Vec<Vec<u64>> = drop_track_lens
+            .iter()
+            .map(|track_len| {
+                (0..*track_len)
+                    .into_iter()
+                    .map(|_| rng.next_u64())
+                    .collect()
+            })
+            .collect();
 
-        for y in 0..area.height {
-            let time_offset = uniform(
-                track_pixel_seed[y as usize],
-                0.0,
-                self.noise_rate * self.character_set.size() as f64,
-            );
-            buf[(5, y)].set_symbol(
-                &self
-                    .character_set
-                    .get(((time_offset + elapsed) / self.noise_rate) as u32)
-                    .to_string(),
-            );
+        let mut glyphs: Vec<Glyph> = entropy
+            .into_iter()
+            .map(|drop_entropy| {
+                build_drop(
+                    &self.character_set,
+                    drop_entropy,
+                    elapsed,
+                    area.width,
+                    area.height,
+                    self.rain_speed.speed(),
+                    self.tail_lifespan.as_secs_f64(),
+                    self.noise_rate,
+                )
+            })
+            .flatten()
+            .collect();
+
+        glyphs.sort_by(|a, b| a.age.partial_cmp(&b.age).unwrap_or(Ordering::Equal));
+
+        for glyph in glyphs {
+            buf[(glyph.x, glyph.y)].set_char(glyph.content);
         }
     }
 }
 
-/// Map a uniform random u64 to a random f64 in the range [lower, upper).
+/// A Glyph to be rendered on the screen.
+struct Glyph {
+    x: u16,
+    y: u16,
+    age: f64,
+    content: char,
+}
+
+/// Build a drop from the given consistent initial entropy state.
+///
+/// The entropy vector's length becomes the drop's track length, so ensure it's at least
+/// the window height.
+fn build_drop(
+    character_set: &CharacterSet,
+    entropy: Vec<u64>,
+    elapsed: f64,
+    width: u16,
+    height: u16,
+    rain_speed: f64,
+    tail_lifespan: f64,
+    noise_rate: f64,
+) -> Vec<Glyph> {
+    if entropy.len() == 0 {
+        return vec![];
+    }
+    let track_len = entropy.len() as u16;
+    let cycle_time_secs = entropy.len() as f64 / rain_speed;
+    let initial_cycle_offset_secs = uniform(entropy[0], 0.0, cycle_time_secs);
+    let current_cycle_offset_secs = (elapsed + initial_cycle_offset_secs) % cycle_time_secs;
+    let head_y = (current_cycle_offset_secs * rain_speed) as u16;
+    let drop_len = (rain_speed * tail_lifespan) as u16;
+    (0..drop_len.min(height))
+        .into_iter()
+        .filter_map(|y_offset| {
+            let age = y_offset as f64 / rain_speed;
+            if age > elapsed {
+                return None;
+            }
+            let cycle_num =
+                ((elapsed + initial_cycle_offset_secs - age) / cycle_time_secs) as usize;
+            let x_entropy = entropy[cycle_num % entropy.len()];
+            let x = (x_entropy % width as u64) as u16;
+            let y = (head_y + track_len - y_offset) % track_len;
+            if y >= height {
+                return None;
+            }
+            let time_offset = uniform(
+                entropy[y as usize],
+                0.0,
+                noise_rate * character_set.size() as f64,
+            );
+            let content = character_set.get(((time_offset + elapsed) / noise_rate) as u32);
+            Some(Glyph { x, y, age, content })
+        })
+        .collect()
+}
+
+/// Map a uniform random u64 to a uniform random f64 in the range [lower, upper).
 fn uniform(seed: u64, lower: f64, upper: f64) -> f64 {
     (seed as f64 / u64::MAX as f64) * (upper - lower) + lower
 }
