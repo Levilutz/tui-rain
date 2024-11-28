@@ -63,7 +63,7 @@ async fn main_loop(mut terminal: DefaultTerminal, framerate: f64) -> Result<(), 
 }
 
 fn render(frame: &mut Frame, elapsed: time::Duration, fps: f64, show_fps: bool) {
-    let rain = Rain::new_emoji_soup(elapsed);
+    let rain = Rain::new_matrix(elapsed);
     frame.render_widget(rain, frame.area());
     if show_fps {
         frame.render_widget(

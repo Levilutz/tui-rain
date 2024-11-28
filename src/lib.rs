@@ -137,16 +137,6 @@ pub struct Rain {
 
 impl Rain {
     /// Construct a new rain widget with defaults for matrix rain.
-    ///
-    /// Defaults are:
-    /// - seed: 1234
-    /// - rain_density: Showering
-    /// - rain_speed: Trickling
-    /// - rain_speed_variance: 0.5,
-    /// - tail_lifespan: 2s
-    /// - color: LightGreen
-    /// - noise_interval: 5s
-    /// - character_set: HalfKana
     pub fn new_matrix(elapsed: Duration) -> Rain {
         Rain {
             elapsed,
@@ -162,16 +152,6 @@ impl Rain {
     }
 
     /// Construct a new rain widget with defaults for standard rain.
-    ///
-    /// Defaults are:
-    /// - seed: 1234
-    /// - rain_density: Torrential
-    /// - rain_speed: Beating
-    /// - rain_speed_variance: 0.5,
-    /// - tail_lifespan: 250ms
-    /// - color: LightBlue
-    /// - noise_interval: 1s
-    /// - character_set: UnicodeRange { start: 0x7c, len: 1 }
     pub fn new_rain(elapsed: Duration) -> Rain {
         Rain {
             elapsed,
@@ -190,16 +170,6 @@ impl Rain {
     }
 
     /// Construct a new rain widget with defaults for snow.
-    ///
-    /// Defaults are:
-    /// - seed: 1234
-    /// - rain_density: Torrential
-    /// - rain_speed: Absolute { speed: 2.0 }
-    /// - rain_speed_variance: 0.1,
-    /// - tail_lifespan: 500ms
-    /// - color: White
-    /// - noise_interval: 1s
-    /// - character_set: UnicodeRange { start: 0x2a, len: 1 }
     pub fn new_snow(elapsed: Duration) -> Rain {
         Rain {
             elapsed,
@@ -218,18 +188,6 @@ impl Rain {
     }
 
     /// Construct a new rain widget with defaults for emoji soup.
-    ///
-    /// Terminals that render emojis as two characters wide will not enjoy this.
-    ///
-    /// Defaults are:
-    /// - seed: 1234
-    /// - rain_density: Torrential
-    /// - rain_speed: Pouring
-    /// - rain_speed_variance: 0.1,
-    /// - tail_lifespan: 500ms
-    /// - color: White
-    /// - noise_interval: 1s
-    /// - character_set: UnicodeRange { start: 0x1f600, len: 80 }
     pub fn new_emoji_soup(elapsed: Duration) -> Rain {
         Rain {
             elapsed,
@@ -247,25 +205,25 @@ impl Rain {
         }
     }
 
-    /// Set the random seed for the generation. Default is 1234.
+    /// Set the random seed for the generation.
     pub fn with_seed(mut self, seed: u64) -> Rain {
         self.seed = seed;
         self
     }
 
-    /// Set the target density for the rain. Default is Showering.
+    /// Set the target density for the rain.
     pub fn with_rain_density(mut self, rain_density: RainDensity) -> Rain {
         self.rain_density = rain_density;
         self
     }
 
-    /// Set the target speed for the rain. Default is Trickling.
+    /// Set the target speed for the rain.
     pub fn with_rain_speed(mut self, rain_speed: RainSpeed) -> Rain {
         self.rain_speed = rain_speed;
         self
     }
 
-    /// Set the rain speed variance. Default is 0.5.
+    /// Set the rain speed variance.
     ///
     /// Value of 0.1 means rain will be uniformly distributed ±10% of the target speed.
     pub fn with_rain_speed_variance(mut self, rain_speed_variance: f64) -> Rain {
@@ -273,25 +231,25 @@ impl Rain {
         self
     }
 
-    /// Set the tail lifespan for the rain. Default is 2 seconds.
+    /// Set the tail lifespan for the rain.
     pub fn with_tail_lifespan(mut self, tail_lifespan: Duration) -> Rain {
         self.tail_lifespan = tail_lifespan;
         self
     }
 
-    /// Set the color for the rain. Default is LightGreen.
+    /// Set the color for the rain.
     pub fn with_color(mut self, color: Color) -> Rain {
         self.color = color;
         self
     }
 
-    /// Set the interval between random character changes. Default is 5 seconds.
+    /// Set the interval between random character changes.
     pub fn with_noise_interval(mut self, noise_interval: Duration) -> Rain {
         self.noise_interval = noise_interval;
         self
     }
 
-    /// Set the character set for the drops. Defualt is HalfKana.
+    /// Set the character set for the drops.
     pub fn with_character_set(mut self, character_set: CharacterSet) -> Rain {
         self.character_set = character_set;
         self
