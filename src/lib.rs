@@ -131,7 +131,7 @@ pub struct Rain {
     rain_speed_variance: f64,
     tail_lifespan: Duration,
     color: Color,
-    noise_rate: f64,
+    noise_interval: Duration,
     character_set: CharacterSet,
 }
 
@@ -146,30 +146,30 @@ impl Rain {
             rain_speed_variance: 0.5,
             tail_lifespan: Duration::from_secs(2),
             color: Color::LightGreen,
-            noise_rate: 20.0,
+            noise_interval: Duration::from_secs(5),
             character_set: CharacterSet::HalfKana,
         }
     }
 
-    /// Set the random seed for the generation.
+    /// Set the random seed for the generation. Default is 1234.
     pub fn with_seed(mut self, seed: u64) -> Rain {
         self.seed = seed;
         self
     }
 
-    /// Set the target density for the rain.
+    /// Set the target density for the rain. Default is Showering.
     pub fn with_rain_density(mut self, rain_density: RainDensity) -> Rain {
         self.rain_density = rain_density;
         self
     }
 
-    /// Set the target speed for the rain.
+    /// Set the target speed for the rain. Default is Trickling.
     pub fn with_rain_speed(mut self, rain_speed: RainSpeed) -> Rain {
         self.rain_speed = rain_speed;
         self
     }
 
-    /// Set the rain speed variance.
+    /// Set the rain speed variance. Default is 0.5.
     ///
     /// Value of 0.1 means rain will be uniformly distributed ±10% of the target speed.
     pub fn with_rain_speed_variance(mut self, rain_speed_variance: f64) -> Rain {
@@ -177,25 +177,25 @@ impl Rain {
         self
     }
 
-    /// Set the tail lifespan for the rain.
+    /// Set the tail lifespan for the rain. Default is 2 seconds.
     pub fn with_tail_lifespan(mut self, tail_lifespan: Duration) -> Rain {
         self.tail_lifespan = tail_lifespan;
         self
     }
 
-    /// Set the color for the rain.
+    /// Set the color for the rain. Default is LightGreen.
     pub fn with_color(mut self, color: Color) -> Rain {
         self.color = color;
         self
     }
 
-    /// Set the number of seconds between random character changes. Lower is more frequent.
-    pub fn with_noise_rate(mut self, noise_rate: f64) -> Rain {
-        self.noise_rate = noise_rate;
+    /// Set the interval between random character changes. Default is 5 seconds.
+    pub fn with_noise_interval(mut self, noise_interval: Duration) -> Rain {
+        self.noise_interval = noise_interval;
         self
     }
 
-    /// Set the character set for the drops.
+    /// Set the character set for the drops. Defualt is HalfKana.
     pub fn with_character_set(mut self, character_set: CharacterSet) -> Rain {
         self.character_set = character_set;
         self
@@ -240,7 +240,7 @@ impl Widget for Rain {
                     self.rain_speed.speed(),
                     self.rain_speed_variance,
                     self.tail_lifespan.as_secs_f64(),
-                    self.noise_rate,
+                    self.noise_interval.as_secs_f64(),
                     self.color,
                 )
             })
@@ -278,7 +278,7 @@ fn build_drop(
     rain_speed: f64,
     rain_speed_variance: f64,
     tail_lifespan: f64,
-    noise_rate: f64,
+    noise_interval: f64,
     color: Color,
 ) -> Vec<Glyph> {
     if entropy.len() == 0 {
@@ -304,9 +304,9 @@ fn build_drop(
         .into_iter()
         .filter_map(|y_offset| {
             let age = y_offset as f64 / rain_speed;
-            if age > elapsed {
-                return None;
-            }
+            // if age > elapsed {
+            //     return None;
+            // }
             let cycle_num =
                 ((elapsed + initial_cycle_offset_secs - age) / cycle_time_secs) as usize;
             let x_entropy = entropy[cycle_num % entropy.len()];
@@ -318,9 +318,9 @@ fn build_drop(
             let time_offset = uniform(
                 entropy[y as usize],
                 0.0,
-                noise_rate * character_set.size() as f64,
+                noise_interval * character_set.size() as f64,
             );
-            let content = character_set.get(((time_offset + elapsed) / noise_rate) as u32);
+            let content = character_set.get(((time_offset + elapsed) / noise_interval) as u32);
             let mut style = Style::default();
             if age > 0.0 {
                 style = style.fg(color)
