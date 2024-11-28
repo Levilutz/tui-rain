@@ -52,13 +52,13 @@ pub enum RainSpeed {
     /// An absolute target speed in pixels / second.
     Absolute { speed: f64 },
 
-    /// A beating rain. Equivalent to `Absolute { speed: 20 }`.
+    /// A beating rain. Equivalent to `Absolute { speed: 20.0 }`.
     Beating,
 
-    /// A pouring rain. Equivalent to `Absolute { speed: 10 }`.
+    /// A pouring rain. Equivalent to `Absolute { speed: 10.0 }`.
     Pouring,
 
-    /// A trickling rain. Equivalent to `Absolute { speed: 5 }`.
+    /// A trickling rain. Equivalent to `Absolute { speed: 5.0 }`.
     Trickling,
 }
 
@@ -136,8 +136,18 @@ pub struct Rain {
 }
 
 impl Rain {
-    /// Construct a new rain widget. Requires only current elapsed duration.
-    pub fn new(elapsed: Duration) -> Rain {
+    /// Construct a new rain widget with defaults for matrix rain.
+    ///
+    /// Defaults are:
+    /// - seed: 1234
+    /// - rain_density: Showering
+    /// - rain_speed: Trickling
+    /// - rain_speed_variance: 0.5,
+    /// - tail_lifespan: 2s
+    /// - color: LightGreen
+    /// - noise_interval: 5s
+    /// - character_set: HalfKana
+    pub fn new_matrix(elapsed: Duration) -> Rain {
         Rain {
             elapsed,
             seed: 1234,
@@ -148,6 +158,92 @@ impl Rain {
             color: Color::LightGreen,
             noise_interval: Duration::from_secs(5),
             character_set: CharacterSet::HalfKana,
+        }
+    }
+
+    /// Construct a new rain widget with defaults for standard rain.
+    ///
+    /// Defaults are:
+    /// - seed: 1234
+    /// - rain_density: Torrential
+    /// - rain_speed: Beating
+    /// - rain_speed_variance: 0.5,
+    /// - tail_lifespan: 250ms
+    /// - color: LightBlue
+    /// - noise_interval: 1s
+    /// - character_set: UnicodeRange { start: 0x7c, len: 1 }
+    pub fn new_rain(elapsed: Duration) -> Rain {
+        Rain {
+            elapsed,
+            seed: 1234,
+            rain_density: RainDensity::Torrential,
+            rain_speed: RainSpeed::Beating,
+            rain_speed_variance: 0.5,
+            tail_lifespan: Duration::from_millis(250),
+            color: Color::LightBlue,
+            noise_interval: Duration::from_secs(1),
+            character_set: CharacterSet::UnicodeRange {
+                start: 0x7c,
+                len: 1,
+            },
+        }
+    }
+
+    /// Construct a new rain widget with defaults for snow.
+    ///
+    /// Defaults are:
+    /// - seed: 1234
+    /// - rain_density: Torrential
+    /// - rain_speed: Absolute { speed: 2.0 }
+    /// - rain_speed_variance: 0.1,
+    /// - tail_lifespan: 500ms
+    /// - color: White
+    /// - noise_interval: 1s
+    /// - character_set: UnicodeRange { start: 0x2a, len: 1 }
+    pub fn new_snow(elapsed: Duration) -> Rain {
+        Rain {
+            elapsed,
+            seed: 1234,
+            rain_density: RainDensity::Torrential,
+            rain_speed: RainSpeed::Absolute { speed: 2.0 },
+            rain_speed_variance: 0.1,
+            tail_lifespan: Duration::from_millis(500),
+            color: Color::White,
+            noise_interval: Duration::from_secs(1),
+            character_set: CharacterSet::UnicodeRange {
+                start: 0x2a,
+                len: 1,
+            },
+        }
+    }
+
+    /// Construct a new rain widget with defaults for emoji soup.
+    ///
+    /// Terminals that render emojis as two characters wide will not enjoy this.
+    ///
+    /// Defaults are:
+    /// - seed: 1234
+    /// - rain_density: Torrential
+    /// - rain_speed: Pouring
+    /// - rain_speed_variance: 0.1,
+    /// - tail_lifespan: 500ms
+    /// - color: White
+    /// - noise_interval: 1s
+    /// - character_set: UnicodeRange { start: 0x1f600, len: 80 }
+    pub fn new_emoji_soup(elapsed: Duration) -> Rain {
+        Rain {
+            elapsed,
+            seed: 1234,
+            rain_density: RainDensity::Torrential,
+            rain_speed: RainSpeed::Pouring,
+            rain_speed_variance: 0.1,
+            tail_lifespan: Duration::from_millis(500),
+            color: Color::White,
+            noise_interval: Duration::from_secs(1),
+            character_set: CharacterSet::UnicodeRange {
+                start: 0x1f600,
+                len: 80,
+            },
         }
     }
 
@@ -293,10 +389,6 @@ fn build_drop(
     .max(1e-3);
     let cycle_time_secs = entropy.len() as f64 / rain_speed;
     let initial_cycle_offset_secs = uniform(entropy[0], 0.0, cycle_time_secs);
-    let head_cycle_num = (elapsed + initial_cycle_offset_secs) / cycle_time_secs;
-    if head_cycle_num < 1.0 {
-        return vec![];
-    }
     let current_cycle_offset_secs = (elapsed + initial_cycle_offset_secs) % cycle_time_secs;
     let head_y = (current_cycle_offset_secs * rain_speed) as u16;
     let drop_len = ((rain_speed * tail_lifespan) as u16).min(height);
@@ -304,11 +396,14 @@ fn build_drop(
         .into_iter()
         .filter_map(|y_offset| {
             let age = y_offset as f64 / rain_speed;
-            // if age > elapsed {
-            //     return None;
-            // }
+            if age > elapsed {
+                return None;
+            }
             let cycle_num =
                 ((elapsed + initial_cycle_offset_secs - age) / cycle_time_secs) as usize;
+            if cycle_num == 0 {
+                return None;
+            }
             let x_entropy = entropy[cycle_num % entropy.len()];
             let x = (x_entropy % width as u64) as u16;
             let y = (head_y + track_len - y_offset) % track_len;

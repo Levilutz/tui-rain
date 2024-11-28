@@ -63,11 +63,15 @@ async fn main_loop(mut terminal: DefaultTerminal, framerate: f64) -> Result<(), 
 }
 
 fn render(frame: &mut Frame, elapsed: time::Duration, fps: f64, show_fps: bool) {
-    let rain = Rain::new(elapsed);
+    let rain = Rain::new_emoji_soup(elapsed);
     frame.render_widget(rain, frame.area());
     if show_fps {
         frame.render_widget(
-            format!("(f) FPS: {}", fps.round()).white().on_blue(),
+            format!("(f) FPS: {}", fps.round())
+                .white()
+                .on_blue()
+                .not_bold()
+                .not_dim(),
             frame.area(),
         );
     }
