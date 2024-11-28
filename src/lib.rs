@@ -21,10 +21,10 @@ pub enum RainDensity {
     /// Is converted to an absolute value, with 1 drop per `sparseness` pixels.
     Relative { sparseness: usize },
 
-    /// A torrential rain. Equivalent to `Relative { sparseness: 100 }`.
+    /// A torrential rain. Equivalent to `Relative { sparseness: 20 }`.
     Torrential,
 
-    /// A showering rain. Equivalent to `Relative { sparseness: 100 }`.
+    /// A showering rain. Equivalent to `Relative { sparseness: 50 }`.
     Showering,
 
     /// A sprinkling rain. Equivalent to `Relative { sparseness: 100 }`.
@@ -40,8 +40,8 @@ impl RainDensity {
             RainDensity::Relative { sparseness } => {
                 (area.width * area.height) as usize / *sparseness
             }
-            RainDensity::Torrential => RainDensity::Relative { sparseness: 100 }.num_drops(area),
-            RainDensity::Showering => RainDensity::Relative { sparseness: 100 }.num_drops(area),
+            RainDensity::Torrential => RainDensity::Relative { sparseness: 20 }.num_drops(area),
+            RainDensity::Showering => RainDensity::Relative { sparseness: 50 }.num_drops(area),
             RainDensity::Sprinkling => RainDensity::Relative { sparseness: 100 }.num_drops(area),
         }
     }
@@ -52,10 +52,10 @@ pub enum RainSpeed {
     /// An absolute target speed in pixels / second.
     Absolute { speed: f64 },
 
-    /// A beating rain. Equivalent to `Absolute { speed: 5 }`.
+    /// A beating rain. Equivalent to `Absolute { speed: 20 }`.
     Beating,
 
-    /// A pouring rain. Equivalent to `Absolute { speed: 5 }`.
+    /// A pouring rain. Equivalent to `Absolute { speed: 10 }`.
     Pouring,
 
     /// A trickling rain. Equivalent to `Absolute { speed: 5 }`.
@@ -67,8 +67,8 @@ impl RainSpeed {
     fn speed(&self) -> f64 {
         match self {
             RainSpeed::Absolute { speed } => *speed,
-            RainSpeed::Beating => 5.0,
-            RainSpeed::Pouring => 5.0,
+            RainSpeed::Beating => 20.0,
+            RainSpeed::Pouring => 10.0,
             RainSpeed::Trickling => 5.0,
         }
     }
@@ -128,6 +128,7 @@ pub struct Rain {
     seed: u64,
     rain_density: RainDensity,
     rain_speed: RainSpeed,
+    rain_speed_variance: f64,
     tail_lifespan: Duration,
     color: Color,
     noise_rate: f64,
@@ -141,7 +142,8 @@ impl Rain {
             elapsed,
             seed: 1234,
             rain_density: RainDensity::Showering,
-            rain_speed: RainSpeed::Pouring,
+            rain_speed: RainSpeed::Trickling,
+            rain_speed_variance: 0.5,
             tail_lifespan: Duration::from_secs(2),
             color: Color::LightGreen,
             noise_rate: 20.0,
@@ -164,6 +166,14 @@ impl Rain {
     /// Set the target speed for the rain.
     pub fn with_rain_speed(mut self, rain_speed: RainSpeed) -> Rain {
         self.rain_speed = rain_speed;
+        self
+    }
+
+    /// Set the rain speed variance.
+    ///
+    /// Value of 0.1 means rain will be uniformly distributed ±10% of the target speed.
+    pub fn with_rain_speed_variance(mut self, rain_speed_variance: f64) -> Rain {
+        self.rain_speed_variance = rain_speed_variance;
         self
     }
 
@@ -228,6 +238,7 @@ impl Widget for Rain {
                     area.width,
                     area.height,
                     self.rain_speed.speed(),
+                    self.rain_speed_variance,
                     self.tail_lifespan.as_secs_f64(),
                     self.noise_rate,
                     self.color,
@@ -265,6 +276,7 @@ fn build_drop(
     width: u16,
     height: u16,
     rain_speed: f64,
+    rain_speed_variance: f64,
     tail_lifespan: f64,
     noise_rate: f64,
     color: Color,
@@ -273,6 +285,12 @@ fn build_drop(
         return vec![];
     }
     let track_len = entropy.len() as u16;
+    let rain_speed = uniform(
+        entropy[0],
+        rain_speed * (1.0 - rain_speed_variance),
+        rain_speed * (1.0 + rain_speed_variance),
+    )
+    .max(1e-3);
     let cycle_time_secs = entropy.len() as f64 / rain_speed;
     let initial_cycle_offset_secs = uniform(entropy[0], 0.0, cycle_time_secs);
     let current_cycle_offset_secs = (elapsed + initial_cycle_offset_secs) % cycle_time_secs;
