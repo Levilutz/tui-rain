@@ -293,6 +293,10 @@ fn build_drop(
     .max(1e-3);
     let cycle_time_secs = entropy.len() as f64 / rain_speed;
     let initial_cycle_offset_secs = uniform(entropy[0], 0.0, cycle_time_secs);
+    let head_cycle_num = (elapsed + initial_cycle_offset_secs) / cycle_time_secs;
+    if head_cycle_num < 1.0 {
+        return vec![];
+    }
     let current_cycle_offset_secs = (elapsed + initial_cycle_offset_secs) % cycle_time_secs;
     let head_y = (current_cycle_offset_secs * rain_speed) as u16;
     let drop_len = ((rain_speed * tail_lifespan) as u16).min(height);
