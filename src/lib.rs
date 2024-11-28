@@ -2,7 +2,12 @@ use std::{cmp::Ordering, time::Duration, u64};
 
 use rand::{RngCore, SeedableRng};
 use rand_pcg::Pcg64Mcg;
-use ratatui::{buffer::Buffer, layout::Rect, style::Color, widgets::Widget};
+use ratatui::{
+    buffer::Buffer,
+    layout::Rect,
+    style::{Color, Style},
+    widgets::Widget,
+};
 
 /// The density of the rain.
 pub enum RainDensity {
@@ -137,8 +142,8 @@ impl Rain {
             seed: 1234,
             rain_density: RainDensity::Showering,
             rain_speed: RainSpeed::Pouring,
-            tail_lifespan: Duration::from_secs(1),
-            color: Color::Green,
+            tail_lifespan: Duration::from_secs(2),
+            color: Color::LightGreen,
             noise_rate: 20.0,
             character_set: CharacterSet::HalfKana,
         }
@@ -225,6 +230,7 @@ impl Widget for Rain {
                     self.rain_speed.speed(),
                     self.tail_lifespan.as_secs_f64(),
                     self.noise_rate,
+                    self.color,
                 )
             })
             .flatten()
@@ -234,6 +240,7 @@ impl Widget for Rain {
 
         for glyph in glyphs {
             buf[(glyph.x, glyph.y)].set_char(glyph.content);
+            buf[(glyph.x, glyph.y)].set_style(glyph.style);
         }
     }
 }
@@ -244,6 +251,7 @@ struct Glyph {
     y: u16,
     age: f64,
     content: char,
+    style: Style,
 }
 
 /// Build a drop from the given consistent initial entropy state.
@@ -259,6 +267,7 @@ fn build_drop(
     rain_speed: f64,
     tail_lifespan: f64,
     noise_rate: f64,
+    color: Color,
 ) -> Vec<Glyph> {
     if entropy.len() == 0 {
         return vec![];
@@ -290,7 +299,14 @@ fn build_drop(
                 noise_rate * character_set.size() as f64,
             );
             let content = character_set.get(((time_offset + elapsed) / noise_rate) as u32);
-            Some(Glyph { x, y, age, content })
+            let style = Style::default().fg(color);
+            Some(Glyph {
+                x,
+                y,
+                age,
+                content,
+                style,
+            })
         })
         .collect()
 }
