@@ -5,7 +5,7 @@ use rand_pcg::Pcg64Mcg;
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
-    style::{Color, Style},
+    style::{Color, Style, Stylize},
     widgets::Widget,
 };
 
@@ -277,8 +277,8 @@ fn build_drop(
     let initial_cycle_offset_secs = uniform(entropy[0], 0.0, cycle_time_secs);
     let current_cycle_offset_secs = (elapsed + initial_cycle_offset_secs) % cycle_time_secs;
     let head_y = (current_cycle_offset_secs * rain_speed) as u16;
-    let drop_len = (rain_speed * tail_lifespan) as u16;
-    (0..drop_len.min(height))
+    let drop_len = ((rain_speed * tail_lifespan) as u16).min(height);
+    (0..drop_len)
         .into_iter()
         .filter_map(|y_offset| {
             let age = y_offset as f64 / rain_speed;
@@ -299,7 +299,15 @@ fn build_drop(
                 noise_rate * character_set.size() as f64,
             );
             let content = character_set.get(((time_offset + elapsed) / noise_rate) as u32);
-            let style = Style::default().fg(color);
+            let mut style = Style::default();
+            if age > 0.0 {
+                style = style.fg(color)
+            }
+            if y_offset < drop_len / 3 {
+                style = style.bold()
+            } else if y_offset > drop_len * 2 / 3 {
+                style = style.dim()
+            }
             Some(Glyph {
                 x,
                 y,
