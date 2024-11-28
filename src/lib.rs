@@ -192,6 +192,8 @@ impl Rain {
     }
 
     /// Construct a new rain widget with defaults for emoji soup.
+    ///
+    /// Terminals that render emojis as two characters wide will not enjoy this.
     pub fn new_emoji_soup(elapsed: Duration) -> Rain {
         Rain {
             elapsed,
