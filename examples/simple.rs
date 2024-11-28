@@ -50,9 +50,11 @@ async fn main_loop(mut terminal: DefaultTerminal, framerate: f64) -> Result<(), 
             },
 
             event = reader.next().fuse() => match event {
+                // Quit if it's a 'q' key press
                 Some(Ok(Event::Key(key_event))) if key_event.code == KeyCode::Char('q') => {
                     return Ok(())
                 },
+                // Show / hide the FPS tracker if it's a 'f' key press
                 Some(Ok(Event::Key(key_event))) if key_event.code == KeyCode::Char('f') => {
                     show_fps = !show_fps
                 },
@@ -63,8 +65,10 @@ async fn main_loop(mut terminal: DefaultTerminal, framerate: f64) -> Result<(), 
 }
 
 fn render(frame: &mut Frame, elapsed: time::Duration, fps: f64, show_fps: bool) {
-    let rain = Rain::new_matrix(elapsed);
-    frame.render_widget(rain, frame.area());
+    // Render the rain
+    frame.render_widget(Rain::new_matrix(elapsed), frame.area());
+
+    // Render the FPS tracker
     if show_fps {
         frame.render_widget(
             format!("(f) FPS: {}", fps.round())

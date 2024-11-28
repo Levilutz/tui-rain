@@ -265,6 +265,7 @@ impl Widget for Rain {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let elapsed = self.elapsed.as_secs_f64();
         let mut rng = self.build_rng();
+
         // We don't actually have n drops with tracks equal to the screen height.
         // We actually have 2n drops with tracks ranging from 1.5 to 2.5 the screen height.
         // This introduces more randomness to the apparent n and reduces cyclic appearance.
@@ -272,6 +273,9 @@ impl Widget for Rain {
         let drop_track_lens: Vec<usize> = (0..num_drops)
             .map(|_| (area.height as u64 * 3 / 2 + rng.next_u64() % area.height as u64) as usize)
             .collect();
+
+        // We construct entropy consistently every frame to mimic statefulness.
+        // This is not a performance bottleneck, so caching wouldn't deliver much benefit.
         let entropy: Vec<Vec<u64>> = drop_track_lens
             .iter()
             .map(|track_len| {
@@ -282,6 +286,7 @@ impl Widget for Rain {
             })
             .collect();
 
+        // For every entropy vec, construct a single drop (vertical line of glyphs).
         let mut glyphs: Vec<Glyph> = entropy
             .into_iter()
             .map(|drop_entropy| {
@@ -301,8 +306,11 @@ impl Widget for Rain {
             .flatten()
             .collect();
 
+        // Sort all the glyphs by age so drop heads always render on top.
+        // This is a moderate bottleneck when the screen is large / there's a lot of glyphs.
         glyphs.sort_by(|a, b| a.age.partial_cmp(&b.age).unwrap_or(Ordering::Equal));
 
+        // Actually render to the buffer.
         for glyph in glyphs {
             buf[(glyph.x, glyph.y)].set_char(glyph.content);
             buf[(glyph.x, glyph.y)].set_style(glyph.style);
@@ -335,54 +343,106 @@ fn build_drop(
     noise_interval: f64,
     color: Color,
 ) -> Vec<Glyph> {
+    // A single drop can expect to be called with the exact same entropy vec on each frame.
+    // This means we can sample the entropy vec to reproducibly generate features every frame (e.g. speed).
+
+    // Later code assumes at least 1 entry in the entropy vec, so break early if not.
     if entropy.len() == 0 {
         return vec![];
     }
+
+    // The length of the entropy vec becomes the length of the drop's track.
+    // This track is usually longer than the screen height by a random amount.
     let track_len = entropy.len() as u16;
+
+    // Use some entropy to compute the drop's actual speed.
+    // n.b. since the entropy vec is stable, the drop's speed will not vary over time.
     let rain_speed = uniform(
         entropy[0],
         rain_speed * (1.0 - rain_speed_variance),
         rain_speed * (1.0 + rain_speed_variance),
     )
-    .max(1e-3);
+    .max(1e-3); // Prevent speed from hitting 0 (if user specifies high variance)
+
+    // Compute how long our drop will take to make 1 cycle given our track len and speed
     let cycle_time_secs = entropy.len() as f64 / rain_speed;
+
+    // Use some entropy to compute a stable random time offset for this drop.
+    // If this value were 0, every drop would start falling with an identical y value.
     let initial_cycle_offset_secs = uniform(entropy[0], 0.0, cycle_time_secs);
+
+    // Compute how far we are into the current cycle and current drop head height.
     let current_cycle_offset_secs = (elapsed + initial_cycle_offset_secs) % cycle_time_secs;
     let head_y = (current_cycle_offset_secs * rain_speed) as u16;
+
+    // Compute drop length given speed and tail lifespan.
+    // Cap at screen height to avoid weird wraparound when tail length is long.
     let drop_len = ((rain_speed * tail_lifespan) as u16).min(height);
+
+    // Render each glyph in the drop.
     (0..drop_len)
         .into_iter()
         .filter_map(|y_offset| {
+            // Compute how long ago this glyph would have first appeared
             let age = y_offset as f64 / rain_speed;
+
+            // If it would have first appeared before the rendering began, don't render.
             if age > elapsed {
                 return None;
             }
+
+            // Compute which cycle this particular glyph is a member of
             let cycle_num =
                 ((elapsed + initial_cycle_offset_secs - age) / cycle_time_secs) as usize;
+
+            // Don't render glyphs from cycle 0
+            // (prevents drops from appearing to spawn in the middle of the screen)
             if cycle_num == 0 {
                 return None;
             }
+
+            // Get stable entropy to decide what column cycle X is rendered in.
+            // This must be per-glyph to prevent drops from jumping side-to-side when they wrap around.
             let x_entropy = entropy[cycle_num % entropy.len()];
             let x = (x_entropy % width as u64) as u16;
+
+            // Compute the y value for this glyph, and don't render if off the screen.
             let y = (head_y + track_len - y_offset) % track_len;
             if y >= height {
                 return None;
             }
+
+            // The 'noise' of glyphs randomly changing is actually modeled as every glyph in the track
+            // just cycling through possible values veeeery slowly. We need a random offset for this
+            // cycling so every glyph doesn't change at the same time.
             let time_offset = uniform(
                 entropy[y as usize],
                 0.0,
                 noise_interval * character_set.size() as f64,
             );
+
+            // Decide what character is rendered based on noise.
             let content = character_set.get(((time_offset + elapsed) / noise_interval) as u32);
+
+            // Compute the styling for the glyph
             let mut style = Style::default();
+
+            // Every glyph except the first is colored. The first is white.
             if age > 0.0 {
                 style = style.fg(color)
+            } else {
+                style = style.fg(Color::White)
             }
+
+            // The lowest third of glyphs is bold, the highest third is dim
             if y_offset < drop_len / 3 {
-                style = style.bold()
+                style = style.bold().not_dim()
             } else if y_offset > drop_len * 2 / 3 {
-                style = style.dim()
+                style = style.dim().not_bold()
+            } else {
+                style = style.not_bold().not_dim()
             }
+
             Some(Glyph {
                 x,
                 y,
