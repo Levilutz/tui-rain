@@ -11,16 +11,22 @@ use tui_rain::Rain;
 /// Values closer to 1 are smoother, values closer to 0 are more responsive.
 const FPS_SMOOTHING: f64 = 0.95;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+/// A helper function to manage rendering a rain widget and an FPS tracker.
+///
+/// Given a callback to construct a rain widget given an elapsed duration.
+pub async fn render_rain(rain: Box<dyn Fn(time::Duration) -> Rain>) -> Result<(), Box<dyn Error>> {
     let mut terminal = ratatui::init();
     terminal.clear().unwrap();
-    let result = main_loop(terminal, 60.0).await;
+    let result = main_loop(rain, terminal, 60.0).await;
     ratatui::restore();
     result
 }
 
-async fn main_loop(mut terminal: DefaultTerminal, framerate: f64) -> Result<(), Box<dyn Error>> {
+async fn main_loop(
+    rain: Box<dyn Fn(time::Duration) -> Rain>,
+    mut terminal: DefaultTerminal,
+    framerate: f64,
+) -> Result<(), Box<dyn Error>> {
     // Read terminal events
     let mut reader = EventStream::new();
 
@@ -32,7 +38,7 @@ async fn main_loop(mut terminal: DefaultTerminal, framerate: f64) -> Result<(), 
     let start_time = time::Instant::now();
 
     // Initialize stuff to track smoothed FPS.
-    let mut show_fps = true;
+    let mut show_fps = false;
     let mut last_tick = time::Instant::now().checked_sub(tick_duration).unwrap();
     let mut fps: f64 = framerate;
 
@@ -46,7 +52,7 @@ async fn main_loop(mut terminal: DefaultTerminal, framerate: f64) -> Result<(), 
                 fps = fps.min(1e4) * FPS_SMOOTHING + (1.0 - FPS_SMOOTHING) / elapsed.as_secs_f64();
 
                 // Render
-                terminal.draw(|frame| render(frame, start_time.elapsed(), fps, show_fps))?;
+                terminal.draw(|frame| render(&rain, frame, start_time.elapsed(), fps, show_fps))?;
             },
 
             event = reader.next().fuse() => match event {
@@ -64,9 +70,15 @@ async fn main_loop(mut terminal: DefaultTerminal, framerate: f64) -> Result<(), 
     }
 }
 
-fn render(frame: &mut Frame, elapsed: time::Duration, fps: f64, show_fps: bool) {
+fn render(
+    rain: &Box<dyn Fn(time::Duration) -> Rain>,
+    frame: &mut Frame,
+    elapsed: time::Duration,
+    fps: f64,
+    show_fps: bool,
+) {
     // Render the rain
-    frame.render_widget(Rain::new_matrix(elapsed), frame.area());
+    frame.render_widget(rain(elapsed), frame.area());
 
     // Render the FPS tracker
     if show_fps {
@@ -79,4 +91,11 @@ fn render(frame: &mut Frame, elapsed: time::Duration, fps: f64, show_fps: bool) 
             frame.area(),
         );
     }
+}
+
+#[allow(dead_code)]
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn Error>> {
+    println!("this is a collection of utils and not independently executable");
+    Ok(())
 }

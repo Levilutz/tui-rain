@@ -10,6 +10,7 @@ use ratatui::{
 };
 
 /// The density of the rain.
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum RainDensity {
     /// An absolute target number of drops to have in the frame.
     ///
@@ -48,6 +49,7 @@ impl RainDensity {
 }
 
 /// The speed of the rain.
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum RainSpeed {
     /// An absolute target speed in pixels / second.
     Absolute { speed: f64 },
@@ -75,6 +77,7 @@ impl RainSpeed {
 }
 
 /// A character set for the rain.
+#[derive(Debug, Clone, PartialEq)]
 pub enum CharacterSet {
     /// An explicit enumeration of character options. This is the least performant.
     Explicit { options: Vec<char> },
@@ -123,6 +126,7 @@ impl CharacterSet {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct Rain {
     elapsed: Duration,
     seed: u64,
