@@ -2,6 +2,8 @@
 
 tui-rain is a simple widget to generate various rain effects for ratatui.
 
+<img src="https://github.com/user-attachments/assets/d7854f3a-69b3-4d25-9129-386b98179d43" width=950 height=540 alt="matrix rain effect">
+
 Features:
 
 - Highly [configurable](#configuration)
@@ -19,6 +21,8 @@ A classic matrix rain of green half-width kana characters. Press `q` to quit, an
 cargo run --example matrix
 ```
 
+<img src="https://github.com/user-attachments/assets/d7854f3a-69b3-4d25-9129-386b98179d43" width=950 height=540 alt="matrix rain effect">
+
 ### Normal rain
 
 Drops of fast blue `|` characters. Press `q` to quit, and `f` to show/hide the FPS tracker.
@@ -26,6 +30,8 @@ Drops of fast blue `|` characters. Press `q` to quit, and `f` to show/hide the F
 ```sh
 cargo run --example rain
 ```
+
+<img src="https://github.com/user-attachments/assets/7e983fa7-9258-4c7b-8b32-4dec56bca67f" width=950 height=540 alt="normal rain effect">
 
 ### Snow
 
@@ -35,6 +41,8 @@ Slow-falling white `*` characters. Press `q` to quit, and `f` to show/hide the F
 cargo run --example snow
 ```
 
+<img src="https://github.com/user-attachments/assets/1e989eba-c45b-4d23-b9d0-be2b06cfc83e" width=950 height=540 alt="snow effect">
+
 ### Emoji soup
 
 A chaotic flood of emojis. Terminals that use Unicode version 9+ widths may experience jitter. Press `q` to quit, and `f` to show/hide the FPS tracker.
@@ -42,6 +50,8 @@ A chaotic flood of emojis. Terminals that use Unicode version 9+ widths may expe
 ```sh
 cargo run --example emoji
 ```
+
+<img src="https://github.com/user-attachments/assets/f19895c2-0b47-49a3-8d84-d909206b5b4a" width=950 height=540 alt="emoji rain effect">
 
 ### Simple
 
