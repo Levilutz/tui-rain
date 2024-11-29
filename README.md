@@ -2,7 +2,7 @@
 
 tui-rain is a simple widget to generate various rain effects for ratatui.
 
-<img src="https://github.com/user-attachments/assets/3fe50f0f-6c01-4864-96ff-58510fd7feb5" width=950 height=540 alt="matrix rain effect">
+<img src="https://github.com/user-attachments/assets/3fe50f0f-6c01-4864-96ff-58510fd7feb5" width=475 height=270 alt="matrix rain effect">
 
 Features:
 
@@ -21,7 +21,7 @@ A classic matrix rain of green half-width kana characters. Press `q` to quit, an
 cargo run --example matrix
 ```
 
-<img src="https://github.com/user-attachments/assets/3fe50f0f-6c01-4864-96ff-58510fd7feb5" width=950 height=540 alt="matrix rain effect">
+<img src="https://github.com/user-attachments/assets/3fe50f0f-6c01-4864-96ff-58510fd7feb5" width=475 height=270 alt="matrix rain effect">
 
 ### Normal rain
 
@@ -31,7 +31,7 @@ Drops of fast blue `|` characters. Press `q` to quit, and `f` to show/hide the F
 cargo run --example rain
 ```
 
-<img src="https://github.com/user-attachments/assets/7e983fa7-9258-4c7b-8b32-4dec56bca67f" width=950 height=540 alt="normal rain effect">
+<img src="https://github.com/user-attachments/assets/7e983fa7-9258-4c7b-8b32-4dec56bca67f" width=475 height=270 alt="normal rain effect">
 
 ### Snow
 
@@ -41,7 +41,7 @@ Slow-falling white `*` characters. Press `q` to quit, and `f` to show/hide the F
 cargo run --example snow
 ```
 
-<img src="https://github.com/user-attachments/assets/1e989eba-c45b-4d23-b9d0-be2b06cfc83e" width=950 height=540 alt="snow effect">
+<img src="https://github.com/user-attachments/assets/1e989eba-c45b-4d23-b9d0-be2b06cfc83e" width=475 height=270 alt="snow effect">
 
 ### Emoji soup
 
@@ -51,7 +51,7 @@ A chaotic flood of emojis. Terminals that use Unicode version 9+ widths may expe
 cargo run --example emoji
 ```
 
-<img src="https://github.com/user-attachments/assets/f19895c2-0b47-49a3-8d84-d909206b5b4a" width=950 height=540 alt="emoji rain effect">
+<img src="https://github.com/user-attachments/assets/f19895c2-0b47-49a3-8d84-d909206b5b4a" width=475 height=270 alt="emoji rain effect">
 
 ### Simple
 
