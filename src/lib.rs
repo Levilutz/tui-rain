@@ -1,6 +1,6 @@
 #![doc = include_str!("../README.md")]
 
-use std::{cmp::Ordering, time::Duration, u64};
+use std::{cmp::Ordering, time::Duration};
 
 use rand::{RngCore, SeedableRng};
 use rand_pcg::Pcg64Mcg;
@@ -475,7 +475,7 @@ impl Rain {
     /// Preset unicode ranges include:
     ///
     /// - `CharacterSet::HalfKana` is the half-width Japanese kana character set (used
-    /// in the classic matrix rain)
+    ///   in the classic matrix rain)
     /// - `CharacterSet::Lowercase` is the lowercase English character set
     pub fn with_character_set(mut self, character_set: CharacterSet) -> Rain {
         self.character_set = character_set;
@@ -505,18 +505,13 @@ impl Widget for Rain {
         // This is not a performance bottleneck, so caching wouldn't deliver much benefit.
         let entropy: Vec<Vec<u64>> = drop_track_lens
             .iter()
-            .map(|track_len| {
-                (0..*track_len)
-                    .into_iter()
-                    .map(|_| rng.next_u64())
-                    .collect()
-            })
+            .map(|track_len| (0..*track_len).map(|_| rng.next_u64()).collect())
             .collect();
 
         // For every entropy vec, construct a single drop (vertical line of glyphs).
         let mut glyphs: Vec<Glyph> = entropy
             .into_iter()
-            .map(|drop_entropy| {
+            .flat_map(|drop_entropy| {
                 build_drop(
                     &self.character_set,
                     drop_entropy,
@@ -532,7 +527,6 @@ impl Widget for Rain {
                     self.bold_dim_effect,
                 )
             })
-            .flatten()
             .collect();
 
         // Sort all the glyphs by age so drop heads always render on top.
@@ -578,7 +572,7 @@ fn build_drop(
     // This means we can sample the entropy vec to reproducibly generate features every frame (e.g. speed).
 
     // Later code assumes at least 1 entry in the entropy vec, so break early if not.
-    if entropy.len() == 0 {
+    if entropy.is_empty() {
         return vec![];
     }
 
@@ -612,7 +606,6 @@ fn build_drop(
 
     // Render each glyph in the drop.
     (0..drop_len)
-        .into_iter()
         .filter_map(|y_offset| {
             // Compute how long ago this glyph would have first appeared
             let age = y_offset as f64 / rain_speed;
