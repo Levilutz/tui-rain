@@ -486,11 +486,135 @@ impl Rain {
     fn build_rng(&self) -> impl RngCore {
         Pcg64Mcg::seed_from_u64(self.seed)
     }
+
+    /// Build a drop from the given consistent initial entropy state.
+    ///
+    /// The entropy vector's length becomes the drop's track length, so ensure it's at
+    /// least the window height.
+    fn build_drop(&self, entropy: Vec<u64>, width: u16, height: u16) -> Vec<Glyph> {
+        let elapsed = self.elapsed.as_secs_f64();
+        let rain_speed = self.rain_speed.speed();
+        let tail_lifespan = self.tail_lifespan.as_secs_f64();
+        let noise_interval = self.noise_interval.as_secs_f64();
+
+        // A single drop can expect to be called with the exact same entropy vec on each
+        // frame. This means we can sample the entropy vec to reproducibly generate
+        // features every frame (e.g. speed).
+
+        // Later code assumes at least 1 entry in the entropy vec, so break early if not.
+        if entropy.is_empty() {
+            return vec![];
+        }
+
+        // The length of the entropy vec becomes the length of the drop's track.
+        // This track is usually longer than the screen height by a random amount.
+        let track_len = entropy.len() as u16;
+
+        // Use some entropy to compute the drop's actual speed.
+        // n.b. since the entropy vec is stable, the drop's speed will not vary over time.
+        let rain_speed = uniform(
+            entropy[0],
+            rain_speed * (1.0 - self.rain_speed_variance),
+            rain_speed * (1.0 + self.rain_speed_variance),
+        )
+        .max(1e-3); // Prevent speed from hitting 0 (if user specifies high variance)
+
+        // Compute how long our drop will take to make 1 cycle given our track len and speed
+        let cycle_time_secs = entropy.len() as f64 / rain_speed;
+
+        // Use some entropy to compute a stable random time offset for this drop.
+        // If this value were 0, every drop would start falling with an identical y value.
+        let initial_cycle_offset_secs = uniform(entropy[0], 0.0, cycle_time_secs);
+
+        // Compute how far we are into the current cycle and current drop head height.
+        let current_cycle_offset_secs = (elapsed + initial_cycle_offset_secs) % cycle_time_secs;
+        let head_y = (current_cycle_offset_secs * rain_speed) as u16;
+
+        // Compute drop length given speed and tail lifespan.
+        // Cap at screen height to avoid weird wraparound when tail length is long.
+        let drop_len = ((rain_speed * tail_lifespan) as u16).min(height);
+
+        // Render each glyph in the drop.
+        (0..drop_len)
+            .filter_map(|y_offset| {
+                // Compute how long ago this glyph would have first appeared
+                let age = y_offset as f64 / rain_speed;
+
+                // If it would have first appeared before the rendering began, don't render.
+                if age > elapsed {
+                    return None;
+                }
+
+                // Compute which cycle this particular glyph is a member of
+                let cycle_num =
+                    ((elapsed + initial_cycle_offset_secs - age) / cycle_time_secs) as usize;
+
+                // Don't render glyphs from cycle 0
+                // (prevents drops from appearing to spawn in the middle of the screen)
+                if cycle_num == 0 {
+                    return None;
+                }
+
+                // Get stable entropy to decide what column cycle X is rendered in.
+                // This must be per-glyph to prevent drops from jumping side-to-side when they wrap around.
+                let x_entropy = entropy[cycle_num % entropy.len()];
+                let x = (x_entropy % width as u64) as u16;
+
+                // Compute the y value for this glyph, and don't render if off the screen.
+                let y = (head_y + track_len - y_offset) % track_len;
+                if y >= height {
+                    return None;
+                }
+
+                // The 'noise' of glyphs randomly changing is actually modeled as every glyph in the track
+                // just cycling through possible values veeeery slowly. We need a random offset for this
+                // cycling so every glyph doesn't change at the same time.
+                let time_offset = uniform(
+                    entropy[y as usize],
+                    0.0,
+                    noise_interval * self.character_set.size() as f64,
+                );
+
+                // Decide what character is rendered based on noise.
+                let content = self
+                    .character_set
+                    .get(((time_offset + elapsed) / noise_interval) as u32);
+
+                // Compute the styling for the glyph
+                let mut style = Style::default();
+
+                // Color appropriately depending on whether this glyph is the head.
+                if age > 0.0 {
+                    style = style.fg(self.color)
+                } else {
+                    style = style.fg(self.head_color)
+                }
+
+                // The lowest third of glyphs is bold, the highest third is dim
+                if self.bold_dim_effect {
+                    if y_offset < drop_len / 3 {
+                        style = style.bold().not_dim()
+                    } else if y_offset > drop_len * 2 / 3 {
+                        style = style.dim().not_bold()
+                    } else {
+                        style = style.not_bold().not_dim()
+                    }
+                }
+
+                Some(Glyph {
+                    x,
+                    y,
+                    age,
+                    content,
+                    style,
+                })
+            })
+            .collect()
+    }
 }
 
 impl Widget for Rain {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let elapsed = self.elapsed.as_secs_f64();
         let mut rng = self.build_rng();
 
         // We don't actually have n drops with tracks equal to the screen height.
@@ -511,22 +635,7 @@ impl Widget for Rain {
         // For every entropy vec, construct a single drop (vertical line of glyphs).
         let mut glyphs: Vec<Glyph> = entropy
             .into_iter()
-            .flat_map(|drop_entropy| {
-                build_drop(
-                    &self.character_set,
-                    drop_entropy,
-                    elapsed,
-                    area.width,
-                    area.height,
-                    self.rain_speed.speed(),
-                    self.rain_speed_variance,
-                    self.tail_lifespan.as_secs_f64(),
-                    self.noise_interval.as_secs_f64(),
-                    self.color,
-                    self.head_color,
-                    self.bold_dim_effect,
-                )
-            })
+            .flat_map(|drop_entropy| self.build_drop(drop_entropy, area.width, area.height))
             .collect();
 
         // Sort all the glyphs by age so drop heads always render on top.
@@ -548,136 +657,6 @@ struct Glyph {
     age: f64,
     content: char,
     style: Style,
-}
-
-/// Build a drop from the given consistent initial entropy state.
-///
-/// The entropy vector's length becomes the drop's track length, so ensure it's at least
-/// the window height.
-fn build_drop(
-    character_set: &CharacterSet,
-    entropy: Vec<u64>,
-    elapsed: f64,
-    width: u16,
-    height: u16,
-    rain_speed: f64,
-    rain_speed_variance: f64,
-    tail_lifespan: f64,
-    noise_interval: f64,
-    color: Color,
-    head_color: Color,
-    bold_dim_effect: bool,
-) -> Vec<Glyph> {
-    // A single drop can expect to be called with the exact same entropy vec on each frame.
-    // This means we can sample the entropy vec to reproducibly generate features every frame (e.g. speed).
-
-    // Later code assumes at least 1 entry in the entropy vec, so break early if not.
-    if entropy.is_empty() {
-        return vec![];
-    }
-
-    // The length of the entropy vec becomes the length of the drop's track.
-    // This track is usually longer than the screen height by a random amount.
-    let track_len = entropy.len() as u16;
-
-    // Use some entropy to compute the drop's actual speed.
-    // n.b. since the entropy vec is stable, the drop's speed will not vary over time.
-    let rain_speed = uniform(
-        entropy[0],
-        rain_speed * (1.0 - rain_speed_variance),
-        rain_speed * (1.0 + rain_speed_variance),
-    )
-    .max(1e-3); // Prevent speed from hitting 0 (if user specifies high variance)
-
-    // Compute how long our drop will take to make 1 cycle given our track len and speed
-    let cycle_time_secs = entropy.len() as f64 / rain_speed;
-
-    // Use some entropy to compute a stable random time offset for this drop.
-    // If this value were 0, every drop would start falling with an identical y value.
-    let initial_cycle_offset_secs = uniform(entropy[0], 0.0, cycle_time_secs);
-
-    // Compute how far we are into the current cycle and current drop head height.
-    let current_cycle_offset_secs = (elapsed + initial_cycle_offset_secs) % cycle_time_secs;
-    let head_y = (current_cycle_offset_secs * rain_speed) as u16;
-
-    // Compute drop length given speed and tail lifespan.
-    // Cap at screen height to avoid weird wraparound when tail length is long.
-    let drop_len = ((rain_speed * tail_lifespan) as u16).min(height);
-
-    // Render each glyph in the drop.
-    (0..drop_len)
-        .filter_map(|y_offset| {
-            // Compute how long ago this glyph would have first appeared
-            let age = y_offset as f64 / rain_speed;
-
-            // If it would have first appeared before the rendering began, don't render.
-            if age > elapsed {
-                return None;
-            }
-
-            // Compute which cycle this particular glyph is a member of
-            let cycle_num =
-                ((elapsed + initial_cycle_offset_secs - age) / cycle_time_secs) as usize;
-
-            // Don't render glyphs from cycle 0
-            // (prevents drops from appearing to spawn in the middle of the screen)
-            if cycle_num == 0 {
-                return None;
-            }
-
-            // Get stable entropy to decide what column cycle X is rendered in.
-            // This must be per-glyph to prevent drops from jumping side-to-side when they wrap around.
-            let x_entropy = entropy[cycle_num % entropy.len()];
-            let x = (x_entropy % width as u64) as u16;
-
-            // Compute the y value for this glyph, and don't render if off the screen.
-            let y = (head_y + track_len - y_offset) % track_len;
-            if y >= height {
-                return None;
-            }
-
-            // The 'noise' of glyphs randomly changing is actually modeled as every glyph in the track
-            // just cycling through possible values veeeery slowly. We need a random offset for this
-            // cycling so every glyph doesn't change at the same time.
-            let time_offset = uniform(
-                entropy[y as usize],
-                0.0,
-                noise_interval * character_set.size() as f64,
-            );
-
-            // Decide what character is rendered based on noise.
-            let content = character_set.get(((time_offset + elapsed) / noise_interval) as u32);
-
-            // Compute the styling for the glyph
-            let mut style = Style::default();
-
-            // Color appropriately depending on whether this glyph is the head.
-            if age > 0.0 {
-                style = style.fg(color)
-            } else {
-                style = style.fg(head_color)
-            }
-
-            // The lowest third of glyphs is bold, the highest third is dim
-            if bold_dim_effect {
-                if y_offset < drop_len / 3 {
-                    style = style.bold().not_dim()
-                } else if y_offset > drop_len * 2 / 3 {
-                    style = style.dim().not_bold()
-                } else {
-                    style = style.not_bold().not_dim()
-                }
-            }
-
-            Some(Glyph {
-                x,
-                y,
-                age,
-                content,
-                style,
-            })
-        })
-        .collect()
 }
 
 /// Map a uniform random u64 to a uniform random f64 in the range [lower, upper).
