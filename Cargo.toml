@@ -1,6 +1,6 @@
 [package]
 name = "tui-rain"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2021"
 license = "MIT"
 description = "tui-rain is a simple widget to generate various rain effects for ratatui"
