@@ -75,6 +75,11 @@ Construction functions:
 There are a variety of configuration options available, and they can be sequentially chained:
 
 ```rust
+use std::time::Duration;
+use tui_rain::{CharacterSet, Rain, RainDensity, RainSpeed};
+
+let elapsed = Duration::from_secs(5);
+
 let rain = Rain::new_rain(elapsed)
     .with_character_set(CharacterSet::UnicodeRange {
         start: 0x61,
@@ -91,8 +96,6 @@ let rain = Rain::new_rain(elapsed)
     .with_color(ratatui::style::Color::LightGreen)
     .with_noise_interval(Duration::from_secs(10))
     .with_seed(1234);
-
-frame.render_widget(rain, frame.area());
 ```
 
 ### Character set
@@ -100,6 +103,11 @@ frame.render_widget(rain, frame.area());
 The simplest option is to provide an explicit set of characters to choose from:
 
 ```rust
+use std::time::Duration;
+use tui_rain::{CharacterSet, Rain};
+
+let elapsed = Duration::from_secs(5);
+
 Rain::new_matrix(elapsed)
     .with_character_set(CharacterSet::Explicit {
         options: vec!['a', 'b', 'c'],
@@ -109,6 +117,11 @@ Rain::new_matrix(elapsed)
 More performant is to provide a unicode range:
 
 ```rust
+use std::time::Duration;
+use tui_rain::{CharacterSet, Rain};
+
+let elapsed = Duration::from_secs(5);
+
 Rain::new_matrix(elapsed)
     .with_character_set(CharacterSet::UnicodeRange {
         start: 0x61,
@@ -123,11 +136,14 @@ Preset unicode ranges include:
 
 ### Density
 
-Target density can be configured either as an absolute number of drops to have on the screen, or a relative number to scale with screen size. The actual number of drops on the screen at any time is randomly distributed between 0 and twice the target.
-
-You can provide an absolute number of drops:
+This can be configured as an absolute number of drops:
 
 ```rust
+use std::time::Duration;
+use tui_rain::{Rain, RainDensity};
+
+let elapsed = Duration::from_secs(5);
+
 Rain::new_matrix(elapsed)
     .with_rain_density(RainDensity::Absolute {
         num_drops: 100,
@@ -137,11 +153,18 @@ Rain::new_matrix(elapsed)
 Or a ratio of screen pixels to drops (lower is more dense):
 
 ```rust
+use std::time::Duration;
+use tui_rain::{Rain, RainDensity};
+
+let elapsed = Duration::from_secs(5);
+
 Rain::new_matrix(elapsed)
     .with_rain_density(RainDensity::Relative {
         sparseness: 50,
     });
 ```
+
+The actual number of drops on the screen at any time is randomly distributed between 0 and twice the target.
 
 Preset relative options include:
 
@@ -156,6 +179,11 @@ Speed can be configured as an absolute value of pixels per second, or as a prese
 For an absolute speed in pixels per second:
 
 ```rust
+use std::time::Duration;
+use tui_rain::{Rain, RainSpeed};
+
+let elapsed = Duration::from_secs(5);
+
 Rain::new_matrix(elapsed)
     .with_rain_speed(RainSpeed::Absolute {
         speed: 10.0,
@@ -175,6 +203,11 @@ To avoid perfectly consistent patterns, you can configure some variance in the s
 For example, a value of `0.1` will cause each drop's speed to be uniformly distrbuted within ±10% of the target speed:
 
 ```rust
+use std::time::Duration;
+use tui_rain::Rain;
+
+let elapsed = Duration::from_secs(5);
+
 Rain::new_matrix(elapsed)
     .with_rain_speed_variance(0.1);
 ```
@@ -186,6 +219,11 @@ The speed of an individual drop will never go below 0.001 pixels / second, but c
 You can make the rain drop tails appear shorter / longer by configuring how long the tail effect lasts:
 
 ```rust
+use std::time::Duration;
+use tui_rain::Rain;
+
+let elapsed = Duration::from_secs(5);
+
 Rain::new_matrix(elapsed)
     .with_tail_lifespan(Duration::from_secs(5));
 ```
@@ -197,6 +235,11 @@ The drop length is capped at the screen height to avoid strange wraparound effec
 You can change the tail color for each drop:
 
 ```rust
+use std::time::Duration;
+use tui_rain::Rain;
+
+let elapsed = Duration::from_secs(5);
+
 Rain::new_matrix(elapsed)
     .with_color(ratatui::style::Color::LightGreen);
 ```
@@ -208,6 +251,11 @@ The color of the head is [independently configured](#head-color). The bold / dim
 You can change the head color for each drop:
 
 ```rust
+use std::time::Duration;
+use tui_rain::Rain;
+
+let elapsed = Duration::from_secs(5);
+
 Rain::new_matrix(elapsed)
     .with_head_color(ratatui::style::Color::Green);
 ```
@@ -221,6 +269,11 @@ By default, the lower third of each drop has the bold effect applied, and the up
 This may tweak the color of glyphs away from the base color on some terminals, so it can be disabled if desired:
 
 ```rust
+use std::time::Duration;
+use tui_rain::Rain;
+
+let elapsed = Duration::from_secs(5);
+
 Rain::new_matrix(elapsed)
     .with_bold_dim_effect(false);
 ```
@@ -230,6 +283,11 @@ Rain::new_matrix(elapsed)
 A more subtle effect is that glyphs already rendered in a drop occasionally switch characters before dissapearing. The time interval between each character switch is per-glyph, and can be adjusted:
 
 ```rust
+use std::time::Duration;
+use tui_rain::Rain;
+
+let elapsed = Duration::from_secs(5);
+
 Rain::new_matrix(elapsed)
     .with_noise_interval(Duration::from_secs(10));
 ```
@@ -239,6 +297,11 @@ Rain::new_matrix(elapsed)
 The random seed can be configured. Given a constant screen size, results should be reproducible across executions, operating systems, and architectures.
 
 ```rust
+use std::time::Duration;
+use tui_rain::Rain;
+
+let elapsed = Duration::from_secs(5);
+
 Rain::new_matrix(elapsed)
     .with_seed(1234);
 ```

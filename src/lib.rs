@@ -11,12 +11,10 @@ use ratatui::{
     widgets::Widget,
 };
 
-/// The density of the rain.
+/// A configuration for the density of the rain effect.
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub enum RainDensity {
     /// An absolute target number of drops to have in the frame.
-    ///
-    /// The number of drops at any point in time ends up being random ~ bin(2n, 0.5).
     Absolute { num_drops: usize },
 
     /// Compute the number of drops based on the frame size. Lower value is denser.
@@ -224,18 +222,86 @@ impl Rain {
     }
 
     /// Set the random seed for the generation.
+    ///
+    /// The random seed can be configured. Given a constant screen size, results should
+    /// be reproducible across executions, operating systems, and architectures.
+    ///
+    /// ```
+    /// use std::time::Duration;
+    /// use tui_rain::Rain;
+    ///
+    /// let elapsed = Duration::from_secs(5);
+    ///
+    /// Rain::new_matrix(elapsed)
+    ///     .with_seed(1234);
+    /// ```
     pub fn with_seed(mut self, seed: u64) -> Rain {
         self.seed = seed;
         self
     }
 
     /// Set the target density for the rain.
+    ///
+    /// This can be configured as an absolute number of drops:
+    ///
+    /// ```
+    /// use std::time::Duration;
+    /// use tui_rain::{Rain, RainDensity};
+    ///
+    /// Rain::new_matrix(Duration::from_secs(0))
+    ///     .with_rain_density(RainDensity::Absolute {
+    ///         num_drops: 100,
+    ///     });
+    /// ```
+    /// Or a ratio of screen pixels to drops (lower is more dense):
+    ///
+    /// ```
+    /// use std::time::Duration;
+    /// use tui_rain::{Rain, RainDensity};
+    ///
+    /// Rain::new_matrix(Duration::from_secs(0))
+    ///     .with_rain_density(RainDensity::Relative {
+    ///         sparseness: 50,
+    ///     });
+    /// ```
+    ///
+    /// The actual number of drops on the screen at any time is randomly distributed
+    /// between 0 and twice the target.
+    ///
+    /// Preset relative options include:
+    ///
+    /// - `RainDensity::Sparse`
+    /// - `RainDensity::Normal`
+    /// - `RainDensity::Dense`
     pub fn with_rain_density(mut self, rain_density: RainDensity) -> Rain {
         self.rain_density = rain_density;
         self
     }
 
     /// Set the target speed for the rain.
+    ///
+    /// Speed can be configured as an absolute value of pixels per second, or as a
+    /// preset.
+    ///
+    /// For an absolute speed in pixels per second:
+    ///
+    /// ```
+    /// use std::time::Duration;
+    /// use tui_rain::{Rain, RainSpeed};
+    ///
+    /// let elapsed = Duration::from_secs(5);
+    ///
+    /// Rain::new_matrix(elapsed)
+    ///     .with_rain_speed(RainSpeed::Absolute {
+    ///         speed: 10.0,
+    ///     });
+    /// ```
+    ///
+    /// Preset options include:
+    ///
+    /// - `RainSpeed::Slow`
+    /// - `RainSpeed::Normal`
+    /// - `RainSpeed::Fast`
     pub fn with_rain_speed(mut self, rain_speed: RainSpeed) -> Rain {
         self.rain_speed = rain_speed;
         self
@@ -243,43 +309,174 @@ impl Rain {
 
     /// Set the rain speed variance.
     ///
-    /// Value of 0.1 means rain will be uniformly distributed ±10% of the target speed.
+    /// To avoid perfectly consistent patterns, you can configure some variance in the
+    /// speed of each drop. This can also give an impression of parallax (depth).
+    ///
+    /// For example, a value of `0.1` will cause each drop's speed to be uniformly
+    /// distrbuted within ±10% of the target speed:
+    ///
+    /// ```
+    /// use std::time::Duration;
+    /// use tui_rain::Rain;
+    ///
+    /// let elapsed = Duration::from_secs(5);
+    ///
+    /// Rain::new_matrix(elapsed)
+    ///     .with_rain_speed_variance(0.1);
+    /// ```
+    ///
+    /// The speed of an individual drop will never go below 0.001 pixels / second, but
+    /// can vary arbitrarily high.
     pub fn with_rain_speed_variance(mut self, rain_speed_variance: f64) -> Rain {
         self.rain_speed_variance = rain_speed_variance;
         self
     }
 
     /// Set the tail lifespan for the rain.
+    ///
+    /// You can make the rain drop tails appear shorter / longer by configuring how long
+    /// the tail effect lasts:
+    ///
+    /// ```
+    /// use std::time::Duration;
+    /// use tui_rain::Rain;
+    ///
+    /// let elapsed = Duration::from_secs(5);
+    ///
+    /// Rain::new_matrix(elapsed)
+    ///     .with_tail_lifespan(Duration::from_secs(5));
+    /// ```
+    ///
+    /// The drop length is capped at the screen height to avoid strange wraparound
+    /// effects.
     pub fn with_tail_lifespan(mut self, tail_lifespan: Duration) -> Rain {
         self.tail_lifespan = tail_lifespan;
         self
     }
 
     /// Set the color for the rain.
+    ///
+    /// You can change the tail color for each drop:
+    ///
+    /// ```
+    /// use std::time::Duration;
+    /// use tui_rain::Rain;
+    ///
+    /// let elapsed = Duration::from_secs(5);
+    ///
+    /// Rain::new_matrix(elapsed)
+    ///     .with_color(ratatui::style::Color::LightGreen);
+    /// ```
+    ///
+    /// The color of the head is [independently configured](Rain::with_head_color). The
+    /// bold / dim effects that automatically get applied over a drop's length may tweak
+    /// the color inadvertently, but [this can be disabled](Rain::with_bold_dim_effect).
     pub fn with_color(mut self, color: Color) -> Rain {
         self.color = color;
         self
     }
 
     /// Set the head color for the rain.
+    ///
+    /// You can change the head color for each drop:
+    ///
+    /// ```
+    /// use std::time::Duration;
+    /// use tui_rain::Rain;
+    ///
+    /// let elapsed = Duration::from_secs(5);
+    ///
+    /// Rain::new_matrix(elapsed)
+    ///     .with_head_color(ratatui::style::Color::Green);
+    /// ```
+    ///
+    /// The color of the tail is [independently configured](Rain::with_color). The
+    /// bold / dim effects that automatically get applied over a drop's length may tweak
+    /// the color inadvertently, but [this can be disabled](Rain::with_bold_dim_effect).
     pub fn with_head_color(mut self, head_color: Color) -> Rain {
         self.head_color = head_color;
         self
     }
 
     /// Set whether to apply the bold / dim effect.
+    ///
+    /// By default, the lower third of each drop has the bold effect applied, and the
+    /// upper third has the dim effect applied. This produces an impression of the drop
+    /// fading instead of abruptly ending.
+    ///
+    /// This may tweak the color of glyphs away from the base color on some terminals,
+    /// so it can be disabled if desired:
+    ///
+    /// ```
+    /// use std::time::Duration;
+    /// use tui_rain::Rain;
+    ///
+    /// let elapsed = Duration::from_secs(5);
+    ///
+    /// Rain::new_matrix(elapsed)
+    ///     .with_bold_dim_effect(false);
+    ///```
     pub fn with_bold_dim_effect(mut self, bold_dim_effect: bool) -> Rain {
         self.bold_dim_effect = bold_dim_effect;
         self
     }
 
     /// Set the interval between random character changes.
+    ///
+    /// A more subtle effect is that glyphs already rendered in a drop occasionally
+    /// switch characters before dissapearing. The time interval between each character
+    /// switch is per-glyph, and can be adjusted:
+    ///
+    /// ```
+    /// use std::time::Duration;
+    /// use tui_rain::Rain;
+    ///
+    /// let elapsed = Duration::from_secs(5);
+    ///
+    /// Rain::new_matrix(elapsed)
+    ///     .with_noise_interval(Duration::from_secs(10));
+    /// ```
     pub fn with_noise_interval(mut self, noise_interval: Duration) -> Rain {
         self.noise_interval = noise_interval;
         self
     }
 
     /// Set the character set for the drops.
+    ///
+    /// The simplest option is to provide an explicit set of characters to choose from:
+    ///
+    /// ```
+    /// use std::time::Duration;
+    /// use tui_rain::{CharacterSet, Rain};
+    ///
+    /// let elapsed = Duration::from_secs(5);
+    ///
+    /// Rain::new_matrix(elapsed)
+    ///     .with_character_set(CharacterSet::Explicit {
+    ///         options: vec!['a', 'b', 'c'],
+    ///     });
+    /// ```
+    ///
+    /// More performant is to provide a unicode range:
+    ///
+    /// ```
+    /// use std::time::Duration;
+    /// use tui_rain::{CharacterSet, Rain};
+    ///
+    /// let elapsed = Duration::from_secs(5);
+    ///
+    /// Rain::new_matrix(elapsed)
+    ///     .with_character_set(CharacterSet::UnicodeRange {
+    ///         start: 0x61,
+    ///         len: 26,
+    ///     });
+    /// ```
+    ///
+    /// Preset unicode ranges include:
+    ///
+    /// - `CharacterSet::HalfKana` is the half-width Japanese kana character set (used
+    /// in the classic matrix rain)
+    /// - `CharacterSet::Lowercase` is the lowercase English character set
     pub fn with_character_set(mut self, character_set: CharacterSet) -> Rain {
         self.character_set = character_set;
         self
