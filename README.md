@@ -4,43 +4,68 @@ tui-rain is a simple widget to generate various rain effects for ratatui.
 
 Features:
 
-- Highly configurable
+- Highly [configurable](#configuration)
 - Practically stateless
 - Backend-agnostic
+- Transparent background
 
 ## Examples
+
+### Matrix rain
+
+A classic matrix rain of green half-width kana characters. Press `q` to quit, and `f` to show/hide the FPS tracker.
 
 ```sh
 cargo run --example matrix
 ```
 
+### Normal rain
+
+Drops of fast blue `|` characters. Press `q` to quit, and `f` to show/hide the FPS tracker.
+
 ```sh
 cargo run --example rain
 ```
+
+### Snow
+
+Slow-falling white `*` characters. Press `q` to quit, and `f` to show/hide the FPS tracker.
 
 ```sh
 cargo run --example snow
 ```
 
+### Emoji soup
+
+A chaotic flood of emojis. Terminals that use Unicode version 9+ widths may experience jitter. Press `q` to quit, and `f` to show/hide the FPS tracker.
+
+```sh
+cargo run --example emoji
+```
+
+### Simple
+
+A demonstration of fairly minimal code to render this widget. Does not listen for key events, and will automatically exit after ~10 seconds.
+
 ## Usage
 
-The `Rain` struct is a simple stateless ratatui widget. It can be initially constructed from a few helper functions for defaults, and further configured from there.
+The `Rain` struct is a simple stateless ratatui widget. It can be initially constructed from a few helper functions with defaults, and further configured from there.
 
-It requires an `elapsed` duration to determine what frame to render. This can be provided by just tracking the time the animation was started, and computing `start_time.elapsed()` at render-time. See [simple.rs](examples/simple.rs) for an absolutely minimal example.
+Construction requires only an `elapsed` duration to determine what frame to render. This can be provided by just tracking the time the animation was started, and computing `start_time.elapsed()` at render-time. See [simple.rs](examples/simple.rs) for a minimal example.
 
 Construction functions:
 
 - `new_matrix` builds a classic matrix rain of green half-width kana characters
 - `new_rain` builds drops of fast blue `|` characters
 - `new_snow` builds slow-falling white `*` characters
-- `new_emoji_soup` builds a chaotic flood of emoji characters, which may not work well on all terminals
+- `new_emoji_soup` builds a chaotic flood of emojis (may jitter on some terminals)
 
 ## Configuration
 
-There are a variety of configuration options available. They can be chained to sequentially apply the configuration:
+There are a variety of configuration options available, and they can be sequentially chained:
 
 ```rust
-Rain::new_matrix(elapsed)
+let rain = Rain::new_rain(elapsed)
     .with_character_set(CharacterSet::UnicodeRange {
         start: 0x61,
         len: 26,
@@ -56,6 +81,8 @@ Rain::new_matrix(elapsed)
     .with_color(ratatui::style::Color::LightGreen)
     .with_noise_interval(Duration::from_secs(10))
     .with_seed(1234);
+
+frame.render_widget(rain, frame.area());
 ```
 
 ### Character set
@@ -81,12 +108,12 @@ Rain::new_matrix(elapsed)
 
 Preset unicode ranges include:
 
-- `CharacterSet::HalfKana`
-- `CharacterSet::Lowercase`
+- `CharacterSet::HalfKana` is the half-width Japanese kana character set (used in the classic matrix rain)
+- `CharacterSet::Lowercase` is the lowercase English character set
 
 ### Density
 
-Density can be configured either as an absolute number of target drops to have on the screen, or a relative number to scale with screen size. The actual number of drops on the srceen at any time is randomly distributed `~ bin(2n, 0.5)`.
+Target density can be configured either as an absolute number of drops to have on the screen, or a relative number to scale with screen size. The actual number of drops on the screen at any time is randomly distributed between 0 and twice the target.
 
 You can provide an absolute number of drops:
 
@@ -108,9 +135,9 @@ Rain::new_matrix(elapsed)
 
 Preset relative options include:
 
-- `RainDensity::Sprinkling`
-- `RainDensity::Showering`
-- `RainDensity::Torrential`
+- `RainDensity::Sparse`
+- `RainDensity::Normal`
+- `RainDensity::Dense`
 
 ### Speed
 
@@ -127,9 +154,9 @@ Rain::new_matrix(elapsed)
 
 Preset options include:
 
-- `RainSpeed::Trickling`
-- `RainSpeed::Pouring`
-- `RainSpeed::Beating`
+- `RainSpeed::Slow`
+- `RainSpeed::Normal`
+- `RainSpeed::Fast`
 
 ### Speed Variance
 
@@ -142,6 +169,8 @@ Rain::new_matrix(elapsed)
     .with_rain_speed_variance(0.1);
 ```
 
+The speed of an individual drop will never go below 0.001 pixels / second, but can vary arbitrarily high.
+
 ### Tail lifespan
 
 You can make the rain drop tails appear shorter / longer by configuring how long the tail effect lasts:
@@ -150,6 +179,8 @@ You can make the rain drop tails appear shorter / longer by configuring how long
 Rain::new_matrix(elapsed)
     .with_tail_lifespan(Duration::from_secs(5));
 ```
+
+The drop length is capped at the screen height to avoid strange wraparound effects.
 
 ### Color
 

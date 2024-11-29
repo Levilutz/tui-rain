@@ -22,14 +22,14 @@ pub enum RainDensity {
     /// Is converted to an absolute value, with 1 drop per `sparseness` pixels.
     Relative { sparseness: usize },
 
-    /// A torrential rain. Equivalent to `Relative { sparseness: 20 }`.
-    Torrential,
+    /// A dense rain. Equivalent to `Relative { sparseness: 20 }`.
+    Dense,
 
-    /// A showering rain. Equivalent to `Relative { sparseness: 50 }`.
-    Showering,
+    /// A normal rain. Equivalent to `Relative { sparseness: 50 }`.
+    Normal,
 
-    /// A sprinkling rain. Equivalent to `Relative { sparseness: 100 }`.
-    Sprinkling,
+    /// A sparse rain. Equivalent to `Relative { sparseness: 100 }`.
+    Sparse,
 }
 
 impl RainDensity {
@@ -41,9 +41,9 @@ impl RainDensity {
             RainDensity::Relative { sparseness } => {
                 (area.width * area.height) as usize / *sparseness
             }
-            RainDensity::Torrential => RainDensity::Relative { sparseness: 20 }.num_drops(area),
-            RainDensity::Showering => RainDensity::Relative { sparseness: 50 }.num_drops(area),
-            RainDensity::Sprinkling => RainDensity::Relative { sparseness: 100 }.num_drops(area),
+            RainDensity::Dense => RainDensity::Relative { sparseness: 20 }.num_drops(area),
+            RainDensity::Normal => RainDensity::Relative { sparseness: 50 }.num_drops(area),
+            RainDensity::Sparse => RainDensity::Relative { sparseness: 100 }.num_drops(area),
         }
     }
 }
@@ -54,14 +54,14 @@ pub enum RainSpeed {
     /// An absolute target speed in pixels / second.
     Absolute { speed: f64 },
 
-    /// A beating rain. Equivalent to `Absolute { speed: 20.0 }`.
-    Beating,
+    /// A fast rain. Equivalent to `Absolute { speed: 20.0 }`.
+    Fast,
 
-    /// A pouring rain. Equivalent to `Absolute { speed: 10.0 }`.
-    Pouring,
+    /// A normal rain. Equivalent to `Absolute { speed: 10.0 }`.
+    Normal,
 
-    /// A trickling rain. Equivalent to `Absolute { speed: 5.0 }`.
-    Trickling,
+    /// A slow rain. Equivalent to `Absolute { speed: 5.0 }`.
+    Slow,
 }
 
 impl RainSpeed {
@@ -69,9 +69,9 @@ impl RainSpeed {
     fn speed(&self) -> f64 {
         match self {
             RainSpeed::Absolute { speed } => *speed,
-            RainSpeed::Beating => 20.0,
-            RainSpeed::Pouring => 10.0,
-            RainSpeed::Trickling => 5.0,
+            RainSpeed::Fast => 20.0,
+            RainSpeed::Normal => 10.0,
+            RainSpeed::Slow => 5.0,
         }
     }
 }
@@ -145,8 +145,8 @@ impl Rain {
         Rain {
             elapsed,
             seed: 1234,
-            rain_density: RainDensity::Showering,
-            rain_speed: RainSpeed::Trickling,
+            rain_density: RainDensity::Normal,
+            rain_speed: RainSpeed::Slow,
             rain_speed_variance: 0.5,
             tail_lifespan: Duration::from_secs(2),
             color: Color::LightGreen,
@@ -160,8 +160,8 @@ impl Rain {
         Rain {
             elapsed,
             seed: 1234,
-            rain_density: RainDensity::Torrential,
-            rain_speed: RainSpeed::Beating,
+            rain_density: RainDensity::Dense,
+            rain_speed: RainSpeed::Fast,
             rain_speed_variance: 0.5,
             tail_lifespan: Duration::from_millis(250),
             color: Color::LightBlue,
@@ -178,7 +178,7 @@ impl Rain {
         Rain {
             elapsed,
             seed: 1234,
-            rain_density: RainDensity::Torrential,
+            rain_density: RainDensity::Dense,
             rain_speed: RainSpeed::Absolute { speed: 2.0 },
             rain_speed_variance: 0.1,
             tail_lifespan: Duration::from_millis(500),
@@ -198,8 +198,8 @@ impl Rain {
         Rain {
             elapsed,
             seed: 1234,
-            rain_density: RainDensity::Torrential,
-            rain_speed: RainSpeed::Pouring,
+            rain_density: RainDensity::Dense,
+            rain_speed: RainSpeed::Normal,
             rain_speed_variance: 0.1,
             tail_lifespan: Duration::from_millis(500),
             color: Color::White,

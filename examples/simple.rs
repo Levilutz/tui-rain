@@ -1,6 +1,6 @@
 use ratatui::Frame;
 use tokio::time;
-use tui_rain::{CharacterSet, Rain};
+use tui_rain::Rain;
 
 #[tokio::main]
 async fn main() {
