@@ -7,6 +7,7 @@ description = "tui-rain is a simple widget to generate various rain effects for 
 homepage = "https://github.com/levilutz/tui-rain"
 repository = "https://github.com/levilutz/tui-rain"
 readme = "README.md"
+keywords = ["tui", "ratatui"]
 
 [dependencies]
 rand = { version = "0.8.5", default-features = false }
