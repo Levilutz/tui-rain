@@ -2,7 +2,7 @@
 
 tui-rain is a simple widget to generate various rain effects for ratatui.
 
-<img src="https://github.com/user-attachments/assets/d7854f3a-69b3-4d25-9129-386b98179d43" width=950 height=540 alt="matrix rain effect">
+<img src="https://github.com/user-attachments/assets/3fe50f0f-6c01-4864-96ff-58510fd7feb5" width=950 height=540 alt="matrix rain effect">
 
 Features:
 
@@ -21,7 +21,7 @@ A classic matrix rain of green half-width kana characters. Press `q` to quit, an
 cargo run --example matrix
 ```
 
-<img src="https://github.com/user-attachments/assets/d7854f3a-69b3-4d25-9129-386b98179d43" width=950 height=540 alt="matrix rain effect">
+<img src="https://github.com/user-attachments/assets/3fe50f0f-6c01-4864-96ff-58510fd7feb5" width=950 height=540 alt="matrix rain effect">
 
 ### Normal rain
 
