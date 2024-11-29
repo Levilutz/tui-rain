@@ -1,5 +1,9 @@
 # tui-rain
 
+[![crate][crates-io-badge]][crate]
+[![docs][doc-badge]][doc]
+[![license][license-badge]][license]
+
 tui-rain is a simple widget to generate various rain effects for ratatui.
 
 <img src="https://github.com/user-attachments/assets/3fe50f0f-6c01-4864-96ff-58510fd7feb5" width=475 height=270 alt="matrix rain effect">
@@ -305,3 +309,14 @@ let elapsed = Duration::from_secs(5);
 Rain::new_matrix(elapsed)
     .with_seed(1234);
 ```
+
+## License
+
+tui-rain is distributed under [The MIT License](./LICENSE.txt).
+
+[crates-io-badge]: https://img.shields.io/crates/v/tui-rain.svg
+[crate]: https://crates.io/crates/tui-rain
+[doc-badge]: https://docs.rs/tui-rain/badge.svg
+[doc]: https://docs.rs/tui-rain/latest/tui_rain/
+[license-badge]: https://img.shields.io/badge/license-MIT-blue.svg
+[license]: https://github.com/Levilutz/tui-rain/blob/main/LICENSE
