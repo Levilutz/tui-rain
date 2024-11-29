@@ -1,3 +1,5 @@
+#![doc = include_str!("../README.md")]
+
 use std::{cmp::Ordering, time::Duration, u64};
 
 use rand::{RngCore, SeedableRng};
