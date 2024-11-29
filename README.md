@@ -61,7 +61,7 @@ A demonstration of fairly minimal code to render this widget. Does not listen fo
 
 The `Rain` struct is a simple stateless ratatui widget. It can be initially constructed from a few helper functions with defaults, and further configured from there.
 
-Construction requires only an `elapsed` duration to determine what frame to render. This can be provided by just tracking the time the animation was started, and computing `start_time.elapsed()` at render-time. See [simple.rs](examples/simple.rs) for a minimal example.
+Construction requires only an `elapsed` duration to determine what frame to render. This can be provided by just tracking the time the animation was started, and computing `start_time.elapsed()` at render-time. See [simple.rs](https://github.com/Levilutz/tui-rain/blob/main/examples/simple.rs) for a minimal example.
 
 Construction functions:
 
