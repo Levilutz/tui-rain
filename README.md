@@ -194,14 +194,36 @@ The drop length is capped at the screen height to avoid strange wraparound effec
 
 ### Color
 
-You can change the base color for each drop:
+You can change the tail color for each drop:
 
 ```rust
 Rain::new_matrix(elapsed)
     .with_color(ratatui::style::Color::LightGreen);
 ```
 
-The head color will always be white and cannot currently be configured. The bold / dim effects that automatically get applied over a drop's length may tweak the color inadvertently, depending on your terminal.
+The color of the head is [independently configured](#head-color). The bold / dim effects that automatically get applied over a drop's length may tweak the color inadvertently, but [this can be disabled](#bolddim-effect).
+
+### Head Color
+
+You can change the head color for each drop:
+
+```rust
+Rain::new_matrix(elapsed)
+    .with_head_color(ratatui::style::Color::Green);
+```
+
+The color of the tail is [independently configured](#color). The bold / dim effects that automatically get applied over a drop's length may tweak the color inadvertently, but [this can be disabled](#bolddim-effect).
+
+### Bold/Dim Effect
+
+By default, the lower third of each drop has the bold effect applied, and the upper third has the dim effect applied. This produces an impression of the drop fading instead of abruptly ending.
+
+This may tweak the color of glyphs away from the base color on some terminals, so it can be disabled if desired:
+
+```rust
+Rain::new_matrix(elapsed)
+    .with_bold_dim_effect(false);
+```
 
 ### Noise Interval
 

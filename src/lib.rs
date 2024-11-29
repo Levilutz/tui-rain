@@ -135,6 +135,8 @@ pub struct Rain {
     rain_speed_variance: f64,
     tail_lifespan: Duration,
     color: Color,
+    head_color: Color,
+    bold_dim_effect: bool,
     noise_interval: Duration,
     character_set: CharacterSet,
 }
@@ -150,6 +152,8 @@ impl Rain {
             rain_speed_variance: 0.5,
             tail_lifespan: Duration::from_secs(2),
             color: Color::LightGreen,
+            head_color: Color::White,
+            bold_dim_effect: true,
             noise_interval: Duration::from_secs(5),
             character_set: CharacterSet::HalfKana,
         }
@@ -165,6 +169,8 @@ impl Rain {
             rain_speed_variance: 0.5,
             tail_lifespan: Duration::from_millis(250),
             color: Color::LightBlue,
+            head_color: Color::White,
+            bold_dim_effect: true,
             noise_interval: Duration::from_secs(1),
             character_set: CharacterSet::UnicodeRange {
                 start: 0x7c,
@@ -183,6 +189,8 @@ impl Rain {
             rain_speed_variance: 0.1,
             tail_lifespan: Duration::from_millis(500),
             color: Color::White,
+            head_color: Color::White,
+            bold_dim_effect: true,
             noise_interval: Duration::from_secs(1),
             character_set: CharacterSet::UnicodeRange {
                 start: 0x2a,
@@ -203,6 +211,8 @@ impl Rain {
             rain_speed_variance: 0.1,
             tail_lifespan: Duration::from_millis(500),
             color: Color::White,
+            head_color: Color::White,
+            bold_dim_effect: true,
             noise_interval: Duration::from_secs(1),
             character_set: CharacterSet::UnicodeRange {
                 start: 0x1f600,
@@ -246,6 +256,18 @@ impl Rain {
     /// Set the color for the rain.
     pub fn with_color(mut self, color: Color) -> Rain {
         self.color = color;
+        self
+    }
+
+    /// Set the head color for the rain.
+    pub fn with_head_color(mut self, head_color: Color) -> Rain {
+        self.head_color = head_color;
+        self
+    }
+
+    /// Set whether to apply the bold / dim effect.
+    pub fn with_bold_dim_effect(mut self, bold_dim_effect: bool) -> Rain {
+        self.bold_dim_effect = bold_dim_effect;
         self
     }
 
@@ -307,6 +329,8 @@ impl Widget for Rain {
                     self.tail_lifespan.as_secs_f64(),
                     self.noise_interval.as_secs_f64(),
                     self.color,
+                    self.head_color,
+                    self.bold_dim_effect,
                 )
             })
             .flatten()
@@ -348,6 +372,8 @@ fn build_drop(
     tail_lifespan: f64,
     noise_interval: f64,
     color: Color,
+    head_color: Color,
+    bold_dim_effect: bool,
 ) -> Vec<Glyph> {
     // A single drop can expect to be called with the exact same entropy vec on each frame.
     // This means we can sample the entropy vec to reproducibly generate features every frame (e.g. speed).
@@ -433,20 +459,22 @@ fn build_drop(
             // Compute the styling for the glyph
             let mut style = Style::default();
 
-            // Every glyph except the first is colored. The first is white.
+            // Color appropriately depending on whether this glyph is the head.
             if age > 0.0 {
                 style = style.fg(color)
             } else {
-                style = style.fg(Color::White)
+                style = style.fg(head_color)
             }
 
             // The lowest third of glyphs is bold, the highest third is dim
-            if y_offset < drop_len / 3 {
-                style = style.bold().not_dim()
-            } else if y_offset > drop_len * 2 / 3 {
-                style = style.dim().not_bold()
-            } else {
-                style = style.not_bold().not_dim()
+            if bold_dim_effect {
+                if y_offset < drop_len / 3 {
+                    style = style.bold().not_dim()
+                } else if y_offset > drop_len * 2 / 3 {
+                    style = style.dim().not_bold()
+                } else {
+                    style = style.not_bold().not_dim()
+                }
             }
 
             Some(Glyph {
